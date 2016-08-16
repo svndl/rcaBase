@@ -76,6 +76,7 @@ end
 ylabel('Amplitude (\muVolts)')
 xlabel(plotSettings.xlabel);
 
+fThresh = fopen('ThresholdParameters.txt', 'a+');
 for condNum = allCondsInd
     
     binVals = rcaSettings.binLevels{condNum};
@@ -110,16 +111,15 @@ for condNum = allCondsInd
         sAmpsLow = sprintf(' %f ', avgRcaData.ampErrBins(:, f, rc, condNum, 1)');
         sAmpsHigh = sprintf(' %f ', avgRcaData.ampErrBins(:, f, rc, condNum, 2)');
         pVals = sprintf(' %f ', pValue');
-        fprintf('\n');
-        fprintf('============================================ Experiment %s condition #%d  freq (%s) comp %s================================================\n', ...
+        fprintf(fThresh, '============================================ Experiment %s condition #%d  freq (%s) comp %s================================================\n', ...
             plotSettings.groupName, condNum,rcaSettings.freqLabels{f}, plotSettings.titleToUse);
         
-        fprintf('Bins:                  %s\n', sBins);
-        fprintf('Amplitude w err low:   %s\n', sAmpsLow);
-        fprintf('Amplitude w err high:  %s\n', sAmpsHigh);
-        fprintf('Phases:                %s\n', sPhases);
-        fprintf('PValue:                %s\n', pVals);
-        fprintf('\n');
+        fprintf(fThresh, 'Bins:                  %s\n', sBins);
+        fprintf(fThresh, 'Amplitude w err low:   %s\n', sAmpsLow);
+        fprintf(fThresh, 'Amplitude w err high:  %s\n', sAmpsHigh);
+        fprintf(fThresh, 'Phases:                %s\n', sPhases);
+        fprintf(fThresh, 'PValue:                %s\n', pVals);
+        fprintf(fThresh, '\n');
 
         threshVal(f,condNum) = tThr;
         threshErr(f,condNum) = tThrStdErr;
@@ -127,10 +127,10 @@ for condNum = allCondsInd
         slopeErr(f,condNum) = tSlpStdErr;
         fitBinRange(f,condNum,:) = [tLSB,tRSB];
         if isnan(tThr)
-            fprintf('No threshold could be fitted for CondNum = %d (%s).\n',condNum,rcaSettings.freqLabels{f});
+            fprintf(fThresh, 'No threshold could be fitted for CondNum = %d (%s).\n',condNum,rcaSettings.freqLabels{f});
         else
             % save line info to plot after everything else so it's "on top"
-            fprintf('Thresh = %1.2f, Slope = %1.2f, Range=[%d,%d] for CondNum = %d (%s).\n',threshVal(f,condNum),slopeVal(f,condNum),fitBinRange(f,condNum,:),condNum,rcaSettings.freqLabels{f});
+            fprintf(fThresh, 'Thresh = %1.2f, Slope = %1.2f, Range=[%d,%d] for CondNum = %d (%s).\n',threshVal(f,condNum),slopeVal(f,condNum),fitBinRange(f,condNum,:),condNum,rcaSettings.freqLabels{f});
             threshFitted(f,condNum) = 1;
             saveXX{f,condNum} = tXX;
             saveY{f,condNum} = tYFitPos;
@@ -202,3 +202,4 @@ if plotThreshold && any(threshFitted(f,:)>0)
     threshInfo.slopeVals = slopeVal;
     threshInfo.fitBinRange = fitBinRange;
 end
+fclose(fThresh);
