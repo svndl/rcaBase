@@ -104,6 +104,8 @@ for condNum = allCondsInd
             mainNoiseData.lowerSideBand,mainNoiseData.higherSideBand,rc,condNum,f);
         
         [tThr,tThrStdErr,tSlp,tSlpStdErr,tLSB,tRSB,~,tYFitPos,tXX, pValue] = getThreshScoringOutput(sweepMatSubjects, rcaSettings.binLevels{condNum});
+        
+        sPhases = sprintf(' %f ', avgRcaData.phaseBins(:, f, rc, condNum)');
         sBins = sprintf(' %f ', binVals);
         sAmpsLow = sprintf(' %f ', avgRcaData.ampErrBins(:, f, rc, condNum, 1)');
         sAmpsHigh = sprintf(' %f ', avgRcaData.ampErrBins(:, f, rc, condNum, 2)');
@@ -115,6 +117,7 @@ for condNum = allCondsInd
         fprintf('Bins:                  %s\n', sBins);
         fprintf('Amplitude w err low:   %s\n', sAmpsLow);
         fprintf('Amplitude w err high:  %s\n', sAmpsHigh);
+        fprintf('Phases:                %s\n', sPhases);
         fprintf('PValue:                %s\n', pVals);
         fprintf('\n');
 
@@ -199,7 +202,3 @@ if plotThreshold && any(threshFitted(f,:)>0)
     threshInfo.slopeVals = slopeVal;
     threshInfo.fitBinRange = fitBinRange;
 end
-
-
-
-
