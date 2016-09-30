@@ -61,7 +61,7 @@ if keepConditions
         
         if calcErrors
             if trialError
-                % grab all subjects' data, averaging over trials: 
+                % grab all subjects' data, without averaging over trials: 
                 tempReal = [];
                 tempImag = [];
                 for s=1:nSubjects
