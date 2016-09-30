@@ -1,7 +1,7 @@
-function [rcaData,W,A,covData,noiseData,comparisonData,comparisonNoiseData,rcaSettings]=rcaSweep(pathnames,binsToUse,freqsToUse,condsToUse,nReg,nComp,dataType,chanToCompare,show,rcPlotStyle)
+function [rcaData,W,A,covData,noiseData,comparisonData,comparisonNoiseData,rcaSettings, sensorData]=rcaSweep(pathnames,binsToUse,freqsToUse,condsToUse,trialsToUse,nReg,nComp,dataType,chanToCompare,show,rcPlotStyle)
 % perform RCA on sweep SSVEP data exported to RLS or DFT format
 %
-% [rcaData,W,A,noiseData,compareData,compareNoiseData,freqIndices,binIndices]=RCASWEEP(PATHNAMES,[BINSTOUSE],[FREQSTOUSE],[CONDSTOUSE],[NREG],[NCOMP],[DATATYPE],[COMPARECHAN],[SHOW],[RCPLOTSTYLE])
+% [rcaData,W,A,noiseData,compareData,compareNoiseData,freqIndices,binIndices]=RCASWEEP(PATHNAMES,[BINSTOUSE],[FREQSTOUSE],[CONDSTOUSE],[TRIALSTOUSE],[NREG],[NCOMP],[DATATYPE],[COMPARECHAN],[SHOW],[RCPLOTSTYLE])
 %
 % INPUTS:
 % pathnames (required): cell vector of string directory names housins DFT_c00x.txt or RLS_c00x.txt exports
@@ -9,6 +9,7 @@ function [rcaData,W,A,covData,noiseData,comparisonData,comparisonNoiseData,rcaSe
 % binsToUse: vector of bin indices to include in RCA (defaults to bin 0 or average across bins)
 % freqsToUse: vector of frequency indices to include in RCA (defaults to 1 or first harmonic ?)
 % condsToUse: vector of conditions to use
+% trailsToUse: vector of indices of trials to use
 % nReg: RCA regularization parameter (defaults to 9)
 % nComp: number of RCs to retain (defaults to 3)
 % dataType: can be 'DFT' or 'RLS'
@@ -35,17 +36,18 @@ function [rcaData,W,A,covData,noiseData,comparisonData,comparisonNoiseData,rcaSe
 % Jacek P. Dmochowski, 2015, report bugs to dmochowski@gmail.com
 % Edited by HEG 07/2015
 
-if nargin<10 || isempty(rcPlotStyle), rcPlotStyle = []; end
-if nargin<9 || isempty(show), show=1; end
-if nargin<8 || isempty(chanToCompare), 
+if nargin<11 || isempty(rcPlotStyle), rcPlotStyle = []; end
+if nargin<10 || isempty(show), show=1; end
+if nargin<9 || isempty(chanToCompare), 
     computeComparison=false; 
     chanToCompare=NaN;
 elseif ~isempty(chanToCompare)
     computeComparison=true; 
 end
-if nargin<7 || isempty(dataType), dataType = 'RLS'; end
-if nargin<6 || isempty(nComp), nComp=3; end
-if nargin<5 || isempty(nReg), nReg=9; end
+if nargin<8 || isempty(dataType), dataType = 'RLS'; end
+if nargin<7 || isempty(nComp), nComp=3; end
+if nargin<6 || isempty(nReg), nReg=9; end
+if nargin<5 || isempty(trialsToUse), trialsToUse = false; end
 if nargin<4 || isempty(condsToUse), condsToUse=1; end
 if nargin<3 || isempty(freqsToUse), freqsToUse=1; end
 if nargin<2 || isempty(binsToUse), binsToUse=0; end
@@ -70,18 +72,18 @@ cellNoiseData2={};
 freqIndices=cell(nSubjects,1);
 binIndices=cell(nSubjects,1);
 fprintf('Reading in sensor data from provided path names...\n')
-for s=1:nSubjects
+s = 1;
+while (s <= nSubjects)
     sourceDataFileName = sprintf('%s/sourceData_%s.mat',pathnames{s},dataType);
     if isempty(dir(sourceDataFileName))
-        createSourceDataMat(pathnames{s});       
-    end        
-    [signalData,indF,indB,noise1,noise2,freqLabels,binLevels] = selectDataForTraining(sourceDataFileName,binsToUse,freqsToUse,condsToUse);
-    freqIndices{s}=indF;
-    binIndices{s}=indB;
+        createSourceDataMat(pathnames{s});
+    end
+    [signalData,freqIndices{s},binIndices{s},noise1,noise2,freqLabels,binLevels] = selectDataForTraining(sourceDataFileName,binsToUse,freqsToUse,condsToUse,trialsToUse);
     sensorData(:,s)=signalData;
     cellNoiseData1(:,s)=noise1;
     cellNoiseData2(:,s)=noise2;
     fprintf('Done selecting data for subject %d/%d: %s\n',s,nSubjects,pathnames{s});
+    s = s + 1;
 end
 nChannels = size(sensorData{1,1},2);
 if computeComparison
@@ -100,7 +102,6 @@ end
 % if they're all the same, make into a regular array
 freqIndices=freqIndices{1};
 binIndices=binIndices{1};
-
 %% run RCA
 fprintf('Running RCA...\n');
 [rcaData,W,A,Rxx,Ryy,Rxy,dGen,plotSettings]=rcaRun(sensorData,nReg,nComp,[],[],show,rcPlotStyle); 
@@ -126,6 +127,7 @@ rcaSettings.binIndices = binIndices;
 rcaSettings.binsToUse = binsToUse;
 rcaSettings.freqsToUse = freqsToUse;
 rcaSettings.condsToUse = condsToUse;
+rcaSettings.trialsToUse = trialsToUse;
 rcaSettings.nReg = nReg;
 rcaSettings.nComp = nComp;
 rcaSettings.chanToCompare = chanToCompare;
