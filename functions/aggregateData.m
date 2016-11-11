@@ -92,7 +92,8 @@ if keepConditions
                         if size(xyData,1)<2
                             keyboard;
                         end
-                        ampErrBins(b,f,rc,condNum,:) = fitErrorEllipse(xyData,ampErrorType);
+                        nanVals = sum(isnan(xyData),2)>0;                        
+                        ampErrBins(b,f,rc,condNum,:) = fitErrorEllipse(xyData(~nanVals,:),ampErrorType);
                     end
                 end
             end            
