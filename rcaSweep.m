@@ -1,4 +1,4 @@
-function [rcaData,W,A,covData,noiseData,comparisonData,comparisonNoiseData,rcaSettings, sensorData]=rcaSweep(pathnames,binsToUse,freqsToUse,condsToUse,trialsToUse,nReg,nComp,dataType,chanToCompare,show,rcPlotStyle)
+function rcaStrct = rcaSweep(pathnames,binsToUse,freqsToUse,condsToUse,trialsToUse,nReg,nComp,dataType,chanToCompare,show,rcPlotStyle)
 % perform RCA on sweep SSVEP data exported to RLS or DFT format
 %
 % [rcaData,W,A,noiseData,compareData,compareNoiseData,freqIndices,binIndices]=RCASWEEP(PATHNAMES,[BINSTOUSE],[FREQSTOUSE],[CONDSTOUSE],[TRIALSTOUSE],[NREG],[NCOMP],[DATATYPE],[COMPARECHAN],[SHOW],[RCPLOTSTYLE])
@@ -135,3 +135,14 @@ rcaSettings.freqLabels = freqLabels;
 rcaSettings.binLevels = binLevels;
 rcaSettings.dataType = dataType;
 rcaSettings.RCplottingInfo = plotSettings;
+
+%% generate final output struct
+rcaStrct.data = rcaData;
+rcaStrct.W = W;
+rcaStrct.A = A;
+rcaStrct.covData = covData; 
+rcaStrct.noiseData = noiseData;
+rcaStrct.comparisonData = comparisonData;
+rcaStrct.comparisonNoiseData = comparisonNoiseData
+rcaStrct.sensorData = sensorData;
+rcaStrct.settings = rcaSettings
