@@ -16,14 +16,14 @@ try
     selRowIx = ismember(indB,binsToUse) & ismember(indF,freqsToUse);
     for row = 1:nR
         for col = 1:nC
-            if ~exist('trialsSel','var') % only identify trials to select once
+            %if ~exist('trialsSel','var') % only identify trials to select once
                 if ~trialsToUse
                     trialsSel = 1:size(signalData{condsToUse(row),col},3); % use all trials
                 else
                     trialsSel = trialsToUse;
                 end
-            else
-            end
+            %else
+            %end
             missingIdx = find(~ismember(trialsSel,1:size(signalData{condsToUse(row),col},3)));
             if ~isempty(missingIdx)
                 error('Input trial indices "%s" is not among set of trials',num2str(trialsSel(missingIdx),'%d,'));
