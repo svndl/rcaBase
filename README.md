@@ -1,12 +1,10 @@
 # rcaSweep
-This subdirectory contains code for analyzing and plotting RCA results run on (sweep) SSVEP data.
+This subdirectory contains code for running RCA analysis in both the time- and frequency domain.
 
-To gain full functionality, you should download the latest version of sweepAnalysis, a free public repository on GitHub by Holly Gerhard (who also developed most of this code up through early 2016). It is available here:
+The initial version of this code was written by Holly Gerhard, with subsequent updates by Peter Kohler and others. 
 
-https://github.com/hgerhard/sweepAnalysis
+Additional code for plotting, written by Holly Gerhard, is available here: https://github.com/hgerhard/sweepAnalysis
+This code is not necessary for running RCA.
 
-(use the “Download ZIP” button and then add the full directory and its subdirectories to your MATLAB path.)
+December 2016, Peter Kohler. 
 
-An example script has been created to illustrate some of the functionality of this subdirectory. See example.m to get started.
-
-Jan. 2016, Holly Gerhard
