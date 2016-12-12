@@ -1,4 +1,4 @@
-# rcaSweep
+# rcaBase
 This subdirectory contains code for running Reliable Components Analysis (RCA) in both the time- and frequency domain.
 
 The initial version of this code was written by Holly Gerhard, with subsequent updates by Peter Kohler and others. 
