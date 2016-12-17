@@ -4,11 +4,19 @@ function [signalDataSel,indFSel,indBSel,noise1Sel,noise2Sel,freqLabelsSel,binLev
 %
 % Return only the desired subset of data contained in sourceDataFileName
 % which contains only binsToUse, freqsToUse, condsToUse, trialsToUse
-try
     load(sourceDataFileName); % should contain these variables: signalData,indF,indB,noise1,noise2,freqLabels,binLevels,chanIncluded
 
-    nR = length(condsToUse);
+    if nargin < 5; trialsToUse = []; else end
+    if nargin < 4 || isempty(condsToUse); condsToUse = 1:size(signalData,2); else end;
+    if nargin < 3 || isempty(condsToUse); freqsToUse = unique(indF); else end;
+    if nargin < 2 || isempty(condsToUse); 
+        binsToUse = unique(indB); 
+        binsToUse = binsToUse(binsToUse>0); % use all bins, but not the average bin
+    else
+    end
+
     nC = size(signalData,2);
+    nR = length(condsToUse);
     signalDataSel = cell(nR,nC);
     noise1Sel = cell(nR,nC);
     noise2Sel = cell(nR,nC);
@@ -16,14 +24,11 @@ try
     selRowIx = ismember(indB,binsToUse) & ismember(indF,freqsToUse);
     for row = 1:nR
         for col = 1:nC
-            %if ~exist('trialsSel','var') % only identify trials to select once
-                if ~trialsToUse
-                    trialsSel = 1:size(signalData{condsToUse(row),col},3); % use all trials
-                else
-                    trialsSel = trialsToUse;
-                end
-            %else
-            %end
+            if isempty(trialsToUse)
+                trialsSel = 1:size(signalData{condsToUse(row),col},3); % use all trials
+            else
+                trialsSel = trialsToUse;
+            end
             missingIdx = find(~ismember(trialsSel,1:size(signalData{condsToUse(row),col},3)));
             if ~isempty(missingIdx)
                 error('Input trial indices "%s" is not among set of trials',num2str(trialsSel(missingIdx),'%d,'));
@@ -33,7 +38,7 @@ try
             noise1Sel{row,col}     =     noise1{condsToUse(row),col}(repmat(selRowIx,[2 1]),:,trialsSel);
             noise2Sel{row,col}     =     noise2{condsToUse(row),col}(repmat(selRowIx,[2 1]),:,trialsSel);
         
-            binLevelsSel{row} = binLevels{condsToUse(row)}(binsToUse);
+            binLevelsSel{row} = binLevels{condsToUse(row)}(binsToUse+1); % add one, because bin level 0 = average
         end
     end
 
@@ -43,11 +48,4 @@ try
     for k = 1:length(freqsToUse)
         freqLabelsSel{k,1} = freqLabels{freqsToUse(k)};
     end
-catch err
-    signalDataSel = 0;
-    indFSel = 0;
-    indBSel =0;
-    noise1Sel = 0;
-    noise2Sel = 0;freqLabelsSel =0; binLevelsSel = 0;
-    rethrow(err)
 end

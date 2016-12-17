@@ -17,7 +17,7 @@ for dT = 1:length(possDataTypes)
     if ~isempty(filenames)
         fprintf('Reading in all %s data in %s\n',dataType,dataPath);                
         
-        [signalData,indF,indB,noise1,noise2,freqLabels,binLevels,chanIncluded]=textExportToRca(dataPath,[],[],[],dataType,[]);        
+        [signalData,indF,indB,noise1,noise2,freqLabels,binLevels,chanIncluded]=textExportToRca(dataPath,dataType);        
         
         sourceDataFileName = sprintf('%s/sourceData_%s.mat',dataPath,dataType);
         save(sourceDataFileName,'signalData','indF','indB','noise1','noise2','freqLabels','binLevels','chanIncluded');

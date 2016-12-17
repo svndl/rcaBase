@@ -47,10 +47,10 @@ end
 if nargin<8 || isempty(dataType), dataType = 'RLS'; end
 if nargin<7 || isempty(nComp), nComp=3; end
 if nargin<6 || isempty(nReg), nReg=9; end
-if nargin<5 || isempty(trialsToUse), trialsToUse = false; end
-if nargin<4 || isempty(condsToUse), condsToUse=1; end
-if nargin<3 || isempty(freqsToUse), freqsToUse=1; end
-if nargin<2 || isempty(binsToUse), binsToUse=0; end
+if nargin<5 || isempty(trialsToUse), trialsToUse = []; end
+if nargin<4 || isempty(condsToUse), condsToUse=[]; end
+if nargin<3 || isempty(freqsToUse), freqsToUse=[]; end
+if nargin<2 || isempty(binsToUse), binsToUse=[]; end
 if nargin<1, error('Must specify at least one input argument'); end
 
 %% if pathanmes is a string, convert to cell
