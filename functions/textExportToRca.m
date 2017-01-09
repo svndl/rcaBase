@@ -203,10 +203,11 @@ function [colHdr, freqsAnalyzed, sweepVals, dataMatrix]=getSweepDataFlex(datafil
     end
 
     binIndices = unique(dataMatrix(:, 4)); % this will always include 0
-    sweepVals=(dati{1, 12}(1:length(binIndices))); % the 12th column in dati are the bin levels, aka "SweepVal"s, include the zeroth bin, which has nan
-    sweepVals=sweepVals';
-    sweepOut = arrayfun(@(x) {x}, sweepVals,'uni',false);
-    sweepOut(1) = {'ave'};
+    sweepTemp=(dati{1, 12}(1:length(binIndices))); % the 12th column in dati are the bin levels, aka "SweepVal"s, include the zeroth bin, which has nan
+    sweepTemp=sweepTemp';
+    sweepVals = arrayfun(@(x) {x}, sweepTemp,'uni',false);
+    sweepVals(1) = {'ave'};
+    
 
     %if ~isempty(chanToSave)
     %    dataMatrix=dataMatrix(ismember(int16(dataMatrix(:, 2)),int16(chanToSave(:))),:); % Restricts the running matrix to the selected electrodes
