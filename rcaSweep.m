@@ -1,4 +1,4 @@
-function rcaStrct = rcaSweep(pathnames,binsToUse,freqsToUse,condsToUse,trialsToUse,nReg,nComp,dataType,chanToCompare,show,rcPlotStyle)
+function rcaStrct = rcaSweep(pathnames,binsToUse,freqsToUse,condsToUse,trialsToUse,nReg,nComp,dataType,chanToCompare,show,rcPlotStyle,forceSourceData)
 % perform RCA on sweep SSVEP data exported to RLS or DFT format
 %
 % [rcaData,W,A,noiseData,compareData,compareNoiseData,freqIndices,binIndices]=RCASWEEP(PATHNAMES,[BINSTOUSE],[FREQSTOUSE],[CONDSTOUSE],[TRIALSTOUSE],[NREG],[NCOMP],[DATATYPE],[COMPARECHAN],[SHOW],[RCPLOTSTYLE])
@@ -36,6 +36,7 @@ function rcaStrct = rcaSweep(pathnames,binsToUse,freqsToUse,condsToUse,trialsToU
 % Jacek P. Dmochowski, 2015, report bugs to dmochowski@gmail.com
 % Edited by HEG 07/2015
 
+if nargin<12 || isempty(forceSourceData), forceSourceData = false; end
 if nargin<11 || isempty(rcPlotStyle), rcPlotStyle = []; end
 if nargin<10 || isempty(show), show=1; end
 if nargin<9 || isempty(chanToCompare), 
@@ -75,7 +76,7 @@ fprintf('Reading in sensor data from provided path names...\n')
 s = 1;
 while (s <= nSubjects)
     sourceDataFileName = sprintf('%s/sourceData_%s.mat',pathnames{s},dataType);
-    if isempty(dir(sourceDataFileName))
+    if isempty(dir(sourceDataFileName)) || forceSourceData
         createSourceDataMat(pathnames{s});
     end
     [signalData,freqIndices{s},binIndices{s},noise1,noise2,freqLabels,binLevels] = selectDataForTraining(sourceDataFileName,binsToUse,freqsToUse,condsToUse,trialsToUse);
