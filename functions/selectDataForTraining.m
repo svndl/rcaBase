@@ -8,8 +8,8 @@ function [signalDataSel,indFSel,indBSel,noise1Sel,noise2Sel,freqLabelsSel,binLev
 
     if nargin < 5; trialsToUse = []; else end
     if nargin < 4 || isempty(condsToUse); condsToUse = 1:size(signalData,2); else end;
-    if nargin < 3 || isempty(condsToUse); freqsToUse = unique(indF); else end;
-    if nargin < 2 || isempty(condsToUse); 
+    if nargin < 3 || isempty(freqsToUse); freqsToUse = unique(indF); else end;
+    if nargin < 2 || isempty(binsToUse); 
         binsToUse = unique(indB); 
         binsToUse = binsToUse(binsToUse>0); % use all bins, but not the average bin
     else
