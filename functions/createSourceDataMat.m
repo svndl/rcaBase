@@ -23,6 +23,8 @@ for dT = 1:length(possDataTypes)
         save(sourceDataFileName,'signalData','indF','indB','noise1','noise2','freqLabels','binLevels','chanIncluded');
         clear signalData indF indB noise1 noise2 freqLabels binLevels chanIncluded
         fprintf('Done.\n')
+    else
+        error('Could not run, data not found: %s',[dataPath,'/',sprintf('%s*.txt',dataType)]);
     end
 
 end
