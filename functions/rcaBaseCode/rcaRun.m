@@ -182,7 +182,11 @@ if show
     try
         for c=1:nComp
             subplot(3,nComp,c);
-            plotOnEgi(s(c).*A(:,c),colorbarLimits);
+            if ~isempty(which('mrC.plotOnEgi')) % check for mrC version of plotOnEgi
+                mrC.plotOnEgi(s(c).*A(:,c),colorbarLimits);
+            else
+                plotOnEgi(s(c).*A(:,c),colorbarLimits);
+            end
             title(['RC' num2str(c)]);
             axis off;
         end
