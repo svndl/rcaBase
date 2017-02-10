@@ -15,7 +15,7 @@ for dT = 1:length(possDataTypes)
     dataType = possDataTypes{dT};
     filenames = dir([dataPath,'/',sprintf('%s*.txt',dataType)]);
     if ~isempty(filenames)
-        fprintf('Reading in all %s data in %s\n',dataType,dataPath);                
+        fprintf('Reading in all %s data in %s ...  ',dataType,dataPath);                
         
         [signalData,indF,indB,noise1,noise2,freqLabels,binLevels,chanIncluded]=textExportToRca(dataPath,dataType);        
         
@@ -24,7 +24,7 @@ for dT = 1:length(possDataTypes)
         clear signalData indF indB noise1 noise2 freqLabels binLevels chanIncluded
         fprintf('Done.\n')
     else
-        error('Could not run, data not found: %s',[dataPath,'/',sprintf('%s*.txt',dataType)]);
+        warning('Could not run, data not found: %s',[dataPath,'/',sprintf('%s*.txt',dataType)]);
     end
 
 end
