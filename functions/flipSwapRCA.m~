@@ -22,12 +22,12 @@ function rcaOut = flipSwapRCA(rcaOut,newOrder,flipComp)
     end
 
     % first reordering
-    rcaOut.data = cellfun(@(x) x(:,newOrder,:),rcaOut.data,'uni',false);
-    rcaOut.A = rcaOut.A(:,newOrder);
-    rcaOut.W = rcaOut.W(:,newOrder);
+    rcaOut.dataout = cellfun(@(x) x(:,newOrder,:),rcaOut.data,'uni',false);
+    rcaOut.A = rcaOut.A(:,swapComp);
+    rcaOut.W = rcaOut.W(:,swapComp);
     % then flipping
     if ~(sum(false(1,5))>0); 
-        rcaOut.data = cellfun(@(x) flipMe(x,flipComp), rcaOut.data,'uni',false);
+        rcaOut.dataout = cellfun(@(x) flipMe(x,flipComp), rcaOut.data,'uni',false);
         rcaOut.A(:,flipComp) = rcaOut.A(:,flipComp)*-1; 
         rcaOut.W(:,flipComp) = rcaOut.W(:,flipComp)*-1;
     else
