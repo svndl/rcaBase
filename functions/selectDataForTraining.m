@@ -21,8 +21,8 @@ function [signalDataSel,indFSel,indBSel,noise1Sel,noise2Sel,freqLabelsSel,binLev
     noise1Sel = cell(nR,nC);
     noise2Sel = cell(nR,nC);
     binLevelsSel = cell(nR,1);
-    selRowIx = ismember(indB,binsToUse) & ismember(indF,freqsToUse);
     for row = 1:nR
+        selRowIx = ismember(indB{condsToUse(row)},binsToUse) & ismember(indF{condsToUse(row)},freqsToUse);
         for col = 1:nC
             if isempty(trialsToUse)
                 trialsSel = 1:size(signalData{condsToUse(row),col},3); % use all trials
@@ -34,16 +34,24 @@ function [signalDataSel,indFSel,indBSel,noise1Sel,noise2Sel,freqLabelsSel,binLev
                 error('Input trial indices "%s" is not among set of trials',num2str(trialsSel(missingIdx),'%d,'));
             else
             end
-            signalDataSel{row,col} = signalData{condsToUse(row),col}(repmat(selRowIx,[2 1]),:,trialsSel); % repmat because the first half is real, second half is imag with same ordering
-            noise1Sel{row,col}     =     noise1{condsToUse(row),col}(repmat(selRowIx,[2 1]),:,trialsSel);
-            noise2Sel{row,col}     =     noise2{condsToUse(row),col}(repmat(selRowIx,[2 1]),:,trialsSel);
+            signalDataSel{row,col} = signalData{condsToUse(row),col}(repmat(selRowIx,[2,1]),:,trialsSel); % repmat because the first half is real, second half is imag with same ordering
+            noise1Sel{row,col}     =     noise1{condsToUse(row),col}(repmat(selRowIx,[2,1]),:,trialsSel);
+            noise2Sel{row,col}     =     noise2{condsToUse(row),col}(repmat(selRowIx,[2,1]),:,trialsSel);
         
             binLevelsSel{row} = binLevels{condsToUse(row)}(binsToUse+1); % add one, because bin level 0 = average
         end
+        if any ( indF{condsToUse(1)} ~= indF{condsToUse(row)} )
+            error('frequency indices are not matched across conditions');
+        elseif any ( indB{condsToUse(1)} ~= indB{condsToUse(row)} )
+            error('bin indices are not matched across conditions');
+        else
+        end
+        if row == 1 % bins and frequencies should not vary across conditions
+            indBSel = indB{condsToUse(row)}(selRowIx);
+            indFSel = indF{condsToUse(row)}(selRowIx);
+        else
+        end            
     end
-
-    indBSel = indB(selRowIx);
-    indFSel = indF(selRowIx);
 
     for k = 1:length(freqsToUse)
         freqLabelsSel{k,1} = freqLabels{freqsToUse(k)};
