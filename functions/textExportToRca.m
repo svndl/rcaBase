@@ -52,8 +52,8 @@ function [cellData,indF,indB,noiseCell1,noiseCell2,freqsAnalyzed,binLevels,chanI
         trialInds=unique(trials(:));
         nTrials=numel(trialInds);
         nEntriesPerTrialInd=zeros(nTrials,1);
-        for tr=1:nTrials
-            trialData=data(trials==tr,:);
+        for tr=1:length(trialInds)
+            trialData=data(trials==trialInds(tr),:);
             nEntriesPerTrialInd(tr)=numel(trialData(:));
         end
 
@@ -94,16 +94,11 @@ function [cellData,indF,indB,noiseCell1,noiseCell2,freqsAnalyzed,binLevels,chanI
         cellData{f}=eeg;
         noiseCell1{f}=noise1;
         noiseCell2{f}=noise2;
+        indF{f}=trialFreqs(trialChannels==channelsToUse(1) & ismember(trialFreqs,freqsToUse) & ismember(trialBins,binsToUse));
+        indB{f}=trialBins(trialChannels==channelsToUse(1) & ismember(trialFreqs,freqsToUse) & ismember(trialBins,binsToUse));
     end
-
     freqsAnalyzed = freqsAnalyzed(freqsToUse);
     chanIncluded = channelsToUse;
-
-    % figure out feature vector indices (this is being done on the last trial
-    % & for only the first channel to use, FIXTHIS) ### 
-    indF=trialFreqs(trialChannels==channelsToUse(1) & ismember(trialFreqs,freqsToUse) & ismember(trialBins,binsToUse));
-    indB=trialBins(trialChannels==channelsToUse(1) & ismember(trialFreqs,freqsToUse) & ismember(trialBins,binsToUse));
-
 end
 %%
 
