@@ -168,6 +168,7 @@ function [colHdr, freqsAnalyzed, sweepVals, dataMatrix]=getSweepDataFlex(datafil
 
     tline=fgetl(fid);
     dati=textscan(fid, [hdrFields{:,2}], 'delimiter', '\t', 'EmptyValue', nan);
+    fclose(fid);
     % Convert the channel identifier string into digit only
     for i=1:size(dati{1,channelIx})
         chan{1,i}=sscanf(dati{1, channelIx}{i}, 'hc%d');
