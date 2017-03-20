@@ -7,11 +7,16 @@ function [signalDataSel,indFSel,indBSel,noise1Sel,noise2Sel,freqLabelsSel,binLev
     load(sourceDataFileName); % should contain these variables: signalData,indF,indB,noise1,noise2,freqLabels,binLevels,chanIncluded
 
     if nargin < 5; trialsToUse = []; else end
-    if nargin < 4 || isempty(condsToUse); condsToUse = 1:size(signalData,2); else end;
-    if nargin < 3 || isempty(freqsToUse); freqsToUse = unique(indF); else end;
-    if nargin < 2 || isempty(binsToUse); 
-        binsToUse = unique(indB); 
-        binsToUse = binsToUse(binsToUse>0); % use all bins, but not the average bin
+    if nargin < 4 || isempty(condsToUse); 
+        condsToUse = 1:size(signalData,2); 
+    else
+    end;
+    if nargin < 3 
+        freqsToUse = [];
+    else
+    end
+    if nargin < 2
+        binsToUse = [];
     else
     end
 
@@ -22,6 +27,15 @@ function [signalDataSel,indFSel,indBSel,noise1Sel,noise2Sel,freqLabelsSel,binLev
     noise2Sel = cell(nR,nC);
     binLevelsSel = cell(nR,1);
     for row = 1:nR
+        if isempty(binsToUse)
+            binsToUse = unique(indB{condsToUse(row)});
+            binsToUse = binsToUse(binsToUse>0); % use all bins except the average bin
+        else
+        end
+        if isempty(freqsToUse)
+            freqsToUse = unique(indF{condsToUse(row)});
+        else
+        end
         selRowIx = ismember(indB{condsToUse(row)},binsToUse) & ismember(indF{condsToUse(row)},freqsToUse);
         for col = 1:nC
             if isempty(trialsToUse)
