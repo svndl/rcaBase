@@ -8,7 +8,7 @@ function [signalDataSel,indFSel,indBSel,noise1Sel,noise2Sel,freqLabelsSel,binLev
 
     if nargin < 5; trialsToUse = []; else end
     if nargin < 4 || isempty(condsToUse); 
-        condsToUse = 1:size(signalData,2); 
+        condsToUse = 1:size(signalData,1); 
     else
     end;
     if nargin < 3 
