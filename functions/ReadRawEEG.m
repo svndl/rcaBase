@@ -6,13 +6,13 @@ function rcaDataOut = ReadRawEEG(database,how)
 
 if nargin<2 || isempty(how), how.nScenes = 1; end
 
-    rca_path = rca_setPath;
+    natSc_path = natSc_setPath(database,how);
     nScenes = how.nScenes;
-    eegRCA = fullfile(rca_path.rcaEEG, database);
+    eegRCA = fullfile(natSc_path.rcaEEG, database);
     if (~exist(eegRCA, 'dir'));
         mkdir(eegRCA);
     end;
-    eegSrc = fullfile(rca_path.srcEEG, database);
+    eegSrc = fullfile(natSc_path.srcEEG, database);
 
     proj_dir = eegSrc;
 
