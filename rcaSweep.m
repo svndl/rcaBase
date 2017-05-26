@@ -105,7 +105,9 @@ freqIndices=freqIndices{1};
 binIndices=binIndices{1};
 %% run RCA
 fprintf('Running RCA...\n');
+warning('off','all')
 [rcaData,W,A,Rxx,Ryy,Rxy,dGen,plotSettings]=rcaRun(sensorData,nReg,nComp,[],[],show,rcPlotStyle); 
+warning('on','all')
 covData.Rxx = Rxx;
 covData.Ryy = Ryy;
 covData.Rxy = Rxy;
@@ -136,6 +138,9 @@ rcaSettings.freqLabels = freqLabels;
 rcaSettings.binLevels = binLevels;
 rcaSettings.dataType = dataType;
 rcaSettings.RCplottingInfo = plotSettings;
+runDate = datestr(clock,26);
+runDate(strfind(runDate,'/')) ='';
+rcaSettings.runDate = runDate; % on what date was this RCA run?
 
 %% generate final output struct
 rcaStrct.data = rcaData;
