@@ -107,7 +107,6 @@ binIndices=binIndices{1};
 fprintf('Running RCA...\n');
 warning('off','all')
 [rcaData,W,A,Rxx,Ryy,Rxy,dGen,plotSettings]=rcaRun(sensorData,nReg,nComp,[],[],show,rcPlotStyle); 
-warning('on','all')
 covData.Rxx = Rxx;
 covData.Ryy = Ryy;
 covData.Rxy = Rxy;
@@ -122,6 +121,7 @@ if computeComparison
     comparisonNoiseData.lowerSideBand =rcaProject(cellNoiseData1,wComparison); 
     comparisonNoiseData.higherSideBand =rcaProject(cellNoiseData2,wComparison); 
 end
+warning('on','all')
 
 %% package some of the necessary variables for plotting/grouping data later on
 rcaSettings.dataFolders = pathnames;
