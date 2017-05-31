@@ -1,4 +1,4 @@
-function [avgData,realSubjs,imagSubjs] = aggregateData(rcaData,rcaSettings,keepConditions,ampErrorType,trialError,nrFit)
+function [avgData,muRcaDataRealAllSubj,muRcaDataImagAllSubj] = aggregateData(rcaData,rcaSettings,keepConditions,ampErrorType,trialError,nrFit)
     % [avgData] = aggregateBins(rcaData,rcaSettings,[keepConditions],[ampErrorType])
     %
     % rcaData: created during call to rcaSweep
@@ -118,8 +118,8 @@ function [avgData,realSubjs,imagSubjs] = aggregateData(rcaData,rcaSettings,keepC
         for condNum = 1:nConditions
             for rc=1:nCompFromInputData
                 for f=1:nFreqs
-                    realSubjs = squeeze(muRcaDataRealAllSubj(:,f,rc,:,condNum));
-                    imagSubjs = squeeze(muRcaDataImagAllSubj(:,f,rc,:,condNum));
+                    realSubjs(1:nBins,1:nSubjects) = squeeze(muRcaDataRealAllSubj(:,f,rc,:,condNum));
+                    imagSubjs(1:nBins,1:nSubjects) = squeeze(muRcaDataImagAllSubj(:,f,rc,:,condNum));
                     for b=1:nBins
                         xyData = [realSubjs(b,:)' imagSubjs(b,:)'];
                         if size(xyData,1)<2
