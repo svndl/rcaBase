@@ -55,11 +55,9 @@ function [avgData,realSubjs,imagSubjs] = aggregateData(rcaData,rcaSettings,keepC
         tSqrd = nan(nBins,nFreqs,nCompFromInputData,nConditions);
         tSig = nan(nBins,nFreqs,nCompFromInputData,nConditions);
     end
-
-    realBins = nan(nBins,nFreqs,nCompFromInputData,nConditions);
-    imagBins = nan(nBins,nFreqs,nCompFromInputData,nConditions);
-    muRcaDataReal = nan(nBins*nFreqs,nCompFromInputData,nConditions);
-    muRcaDataImag = nan(nBins*nFreqs,nCompFromInputData,nConditions);
+    
+    muRcaDataReal = nan(nBins,nFreqs,nCompFromInputData,nConditions);
+    muRcaDataImag = nan(nBins,nFreqs,nCompFromInputData,nConditions);
     
     NR_pOpt = nan(4,nFreqs,nCompFromInputData,nConditions);
     NR_R2 = nan(1,nFreqs,nCompFromInputData,nConditions);
@@ -74,59 +72,56 @@ function [avgData,realSubjs,imagSubjs] = aggregateData(rcaData,rcaSettings,keepC
     end
     
     for condNum = 1:nConditions
-        % average over trials and subjects for each condition
-        muRcaDataReal(:,:,condNum) = nanmean(cat(3,rcaDataReal{condNum,:}),3); % weights each trial equally
-        muRcaDataImag(:,:,condNum) = nanmean(cat(3,rcaDataImag{condNum,:}),3); % weights each trial equally
-        % make sure only selected components are included
+        tempReal = [];
+        tempImag = [];
+        if trialError
+            % grab all subjects' data, without averaging over trials: 
+            for s=1:nSubjects
+                tempReal = cat(3,tempReal,rcaDataReal{condNum,s});
+                tempImag = cat(3,tempImag,rcaDataImag{condNum,s});
+            end
+            muRcaDataRealAllSubj(:,:,:,:,condNum) = nan(nBins,nFreqs,nCompFromInputData,nSubjects*nTrials);
+            muRcaDataImagAllSubj(:,:,:,:,condNum) = nan(nBins,nFreqs,nCompFromInputData,nSubjects*nTrials);
+        else
+            % grab all subjects' data, averaging over trials: 
+            for s=1:nSubjects
+                tempReal = cat(3,tempReal,nanmean(rcaDataReal{condNum,s},3));
+                tempImag = cat(3,tempImag,nanmean(rcaDataImag{condNum,s},3));
+            end
+            muRcaDataRealAllSubj(:,:,:,:,condNum) = nan(nBins,nFreqs,nCompFromInputData,nSubjects);
+            muRcaDataImagAllSubj(:,:,:,:,condNum) = nan(nBins,nFreqs,nCompFromInputData,nSubjects);
+        end
+        % split bins and frequencies, and make sure only selected components are included
         binLevels = cell2mat(cellfun(@(x) str2num(x), rcaSettings.binLevels{condNum},'uni',false));
-        for rc=1:nCompFromInputData
-            for f=1:nFreqs
-                realBins(:,f,rc,condNum) = muRcaDataReal(rcaSettings.freqIndices==rcaSettings.freqsToUse(f),rc,condNum);
-                imagBins(:,f,rc,condNum) = muRcaDataImag(rcaSettings.freqIndices==rcaSettings.freqsToUse(f),rc,condNum);
-                 % fit Naka Rushton on means
-                if nrFit(f,rc,condNum)
-                    fitData = sqrt(realBins(:,f,rc,condNum).^2+imagBins(:,f,rc,condNum).^2);
-                    [ NR_pOpt(:,f,rc,condNum), NR_R2(:,f,rc,condNum), NR_Range(:,f,rc,condNum), NR_hModel ] = FitNakaRushton(binLevels, fitData);
-                else
+        for rc = 1:nCompFromInputData
+            for f = 1:nFreqs
+                for b = 1:nBins
+                    curIdx = rcaSettings.freqIndices==rcaSettings.freqsToUse(f) & rcaSettings.binIndices==rcaSettings.binsToUse(b);
+                    muRcaDataRealAllSubj(b,f,rc,1:size(tempReal(curIdx,rc,:),3),condNum) = tempReal(curIdx,rc,:);
+                    muRcaDataImagAllSubj(b,f,rc,1:size(tempImag(curIdx,rc,:),3),condNum) = tempImag(curIdx,rc,:);
                 end
             end
         end
-       
+        % average over trials and subjects for each condition
+        muRcaDataReal(:,:,:,condNum) = nanmean(muRcaDataRealAllSubj(:,:,:,:,condNum),4); % weights each trial equally
+        muRcaDataImag(:,:,:,condNum) = nanmean(muRcaDataImagAllSubj(:,:,:,:,condNum),4); % weights each trial equally
     end
-
-
+    % fit Naka Rushton on means for all conditions
+    if any(nrFit(:))
+        fitData = sqrt(muRcaDataReal.^2+muRcaDataImag.^2);
+        [ NR_pOpt, NR_R2, NR_Range, NR_hModel ] = FitNakaRushton(binLevels, fitData);
+        clear fitData;
+    else
+    end
+    
     if calcErrors  
         for condNum = 1:nConditions
-            if trialError
-                % grab all subjects' data, without averaging over trials: 
-                tempReal = [];
-                tempImag = [];
-                for s=1:nSubjects
-                    tempReal = cat(3,tempReal,rcaDataReal{condNum,s});
-                    tempImag = cat(3,tempImag,rcaDataImag{condNum,s});
-                end
-                muRcaDataRealAllSubj(:,:,:,condNum) = nan(nBins*nFreqs,nCompFromInputData,nSubjects*nTrials);
-                muRcaDataImagAllSubj(:,:,:,condNum) = nan(nBins*nFreqs,nCompFromInputData,nSubjects*nTrials);
-                muRcaDataRealAllSubj(:,:,1:size(tempReal,3),condNum) = tempReal; % 1:size(tempReal,3) - make it possible to have subjects with fewer trials
-                muRcaDataImagAllSubj(:,:,1:size(tempImag,3),condNum) = tempImag;
-            else
-                % grab all subjects' data, averaging over trials: 
-                muRcaDataRealAllSubj(:,:,:,condNum) = nan(nBins*nFreqs,nCompFromInputData,nSubjects);
-                muRcaDataImagAllSubj(:,:,:,condNum) = nan(nBins*nFreqs,nCompFromInputData,nSubjects);
-                for s=1:nSubjects
-                    muRcaDataRealAllSubj(:,:,s,condNum) = nanmean(rcaDataReal{condNum,s},3);
-                    muRcaDataImagAllSubj(:,:,s,condNum) = nanmean(rcaDataImag{condNum,s},3);
-                end
-            end
-
             for rc=1:nCompFromInputData
                 for f=1:nFreqs
+                    realSubjs = squeeze(muRcaDataRealAllSubj(:,f,rc,:,condNum));
+                    imagSubjs = squeeze(muRcaDataImagAllSubj(:,f,rc,:,condNum));
                     for b=1:nBins
-                        % make sure only selected components are included
-                        firstDimInd = rcaSettings.freqIndices==rcaSettings.freqsToUse(f) & rcaSettings.binIndices==rcaSettings.binsToUse(b);
-                        realSubjs(b,:,f,rc,condNum) = squeeze(muRcaDataRealAllSubj(firstDimInd,rc,:,condNum));
-                        imagSubjs(b,:,f,rc,condNum) = squeeze(muRcaDataImagAllSubj(firstDimInd,rc,:,condNum));
-                        xyData = [realSubjs(b,:,f,rc,condNum)' imagSubjs(b,:,f,rc,condNum)'];
+                        xyData = [realSubjs(b,:)' imagSubjs(b,:)'];
                         if size(xyData,1)<2
                             keyboard;
                         end
@@ -142,11 +137,11 @@ function [avgData,realSubjs,imagSubjs] = aggregateData(rcaData,rcaSettings,keepC
                         for s = 1:size(realSubjs,2) % number of subjects, or subject x trials
                             sIdx = true(size(realSubjs,2),1);
                             sIdx(s) = false;
-                            fitData(:,s) = sqrt( nanmean(realSubjs(:,sIdx,f,rc,condNum),2).^2 + nanmean(imagSubjs(:,sIdx,f,rc,condNum),2).^2 );
+                            fitData(:,s) = sqrt( nanmean(realSubjs(:,sIdx),2).^2 + nanmean(imagSubjs(:,sIdx),2).^2 );
                         end
                         NR_JK_pOpt = FitNakaRushton(binLevels, fitData);
                         NR_pOpt_JKSE(:,f,rc,condNum) = getParSE( NR_JK_pOpt );
-                        clear NR_JK_pOpt;
+                        clear NR_JK_pOpt; clear fitData;
                     else
                     end
                 end
@@ -155,11 +150,11 @@ function [avgData,realSubjs,imagSubjs] = aggregateData(rcaData,rcaSettings,keepC
     else
     end
 
-    ampBins = sqrt(realBins.^2+imagBins.^2);
-    phaseBins = atan(imagBins./realBins);
+    ampBins = sqrt(muRcaDataReal.^2+muRcaDataImag.^2);
+    phaseBins = atan(muRcaDataImag./muRcaDataReal);
 
-    avgData.realBins = realBins;
-    avgData.imagBins = imagBins;
+    avgData.realBins = muRcaDataReal;
+    avgData.imagBins = muRcaDataImag;
     avgData.ampBins = ampBins;
     avgData.phaseBins = phaseBins;
 
