@@ -118,8 +118,8 @@ function [avgData,muRcaDataRealAllSubj,muRcaDataImagAllSubj] = aggregateData(rca
         for condNum = 1:nConditions
             for rc=1:nCompFromInputData
                 for f=1:nFreqs
-                    realSubjs(1:nBins,1:nSubjects) = squeeze(muRcaDataRealAllSubj(:,f,rc,:,condNum));
-                    imagSubjs(1:nBins,1:nSubjects) = squeeze(muRcaDataImagAllSubj(:,f,rc,:,condNum));
+                    realSubjs(1:nBins,:) = squeeze(muRcaDataRealAllSubj(:,f,rc,:,condNum));
+                    imagSubjs(1:nBins,:) = squeeze(muRcaDataImagAllSubj(:,f,rc,:,condNum));
                     for b=1:nBins
                         xyData = [realSubjs(b,:)' imagSubjs(b,:)'];
                         if size(xyData,1)<2
