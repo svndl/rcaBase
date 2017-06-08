@@ -27,6 +27,7 @@ function [signalDataSel,indFSel,indBSel,noise1Sel,noise2Sel,freqLabelsSel,binLev
     noise2Sel = cell(nR,nC);
     binLevelsSel = cell(nR,1);
     trialsSel = cell(nR,1);
+    
     for row = 1:nR
         if condsToUse(row) > size(signalData,1) || isempty(signalData{condsToUse(row)});
             signalDataSel(row,:) = {[]};
@@ -62,9 +63,11 @@ function [signalDataSel,indFSel,indBSel,noise1Sel,noise2Sel,freqLabelsSel,binLev
 
                 binLevelsSel{row} = binLevels{condsToUse(row)}(binsToUse+1); % add one, because bin level 0 = average
             end
-            if any ( indF{condsToUse(1)} ~= indF{condsToUse(row)} )
+            % check if indices are unequal
+            nonEmpty = find(cell2mat(cellfun(@(x) ~isempty(x),indF(condsToUse),'uni',false)),1,'first');
+            if any ( indF{nonEmpty} ~= indF{condsToUse(row)} )
                 error('frequency indices are not matched across conditions');
-            elseif any ( indB{condsToUse(1)} ~= indB{condsToUse(row)} )
+            elseif any ( indB{nonEmpty} ~= indB{condsToUse(row)} )
                 error('bin indices are not matched across conditions');
             else
             end
