@@ -31,7 +31,9 @@ function [cellData,indF,indB,noiseCell1,noiseCell2,freqsAnalyzed,binLevels,chanI
 
         [~,freqsAnalyzed,binLevelsCrnt,data]=getSweepDataFlex(fullfile(pathname,filenames(f).name));
 
-        % set values 
+        % set values
+        tempName = filenames(f).name;
+        condIdx = str2num(tempName(end-6:end-4)); % grab condition number
         channelsToUse = unique(data(:,2));
         freqsToUse = unique(data(:,3));
         binsToUse = unique(data(:,4)); % note, this includes averaged bin
@@ -40,7 +42,7 @@ function [cellData,indF,indB,noiseCell1,noiseCell2,freqsAnalyzed,binLevels,chanI
         nChannels=numel(channelsToUse);
         nBins=numel(binsToUse);
 
-        binLevels{f,1} = binLevelsCrnt(1:nBins);
+        binLevels{condIdx,1} = binLevelsCrnt(1:nBins);
 
         if isempty(data)
             warning('No data found in %s',filenames(f).name)
@@ -91,11 +93,11 @@ function [cellData,indF,indB,noiseCell1,noiseCell2,freqsAnalyzed,binLevels,chanI
                 noise2(:,ch,tr)=[theseNoiseReals2; theseNoiseImags2];
             end
         end
-        cellData{f}=eeg;
-        noiseCell1{f}=noise1;
-        noiseCell2{f}=noise2;
-        indF{f}=trialFreqs(trialChannels==channelsToUse(1) & ismember(trialFreqs,freqsToUse) & ismember(trialBins,binsToUse));
-        indB{f}=trialBins(trialChannels==channelsToUse(1) & ismember(trialFreqs,freqsToUse) & ismember(trialBins,binsToUse));
+        cellData{condIdx}=eeg;
+        noiseCell1{condIdx}=noise1;
+        noiseCell2{condIdx}=noise2;
+        indF{condIdx}=trialFreqs(trialChannels==channelsToUse(1) & ismember(trialFreqs,freqsToUse) & ismember(trialBins,binsToUse));
+        indB{condIdx}=trialBins(trialChannels==channelsToUse(1) & ismember(trialFreqs,freqsToUse) & ismember(trialBins,binsToUse));
     end
     freqsAnalyzed = freqsAnalyzed(freqsToUse);
     chanIncluded = channelsToUse;
