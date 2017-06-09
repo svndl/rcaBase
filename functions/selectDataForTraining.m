@@ -57,9 +57,9 @@ function [signalDataSel,indFSel,indBSel,noise1Sel,noise2Sel,freqLabelsSel,binLev
                     error('Input trial indices "%s" is not among set of trials',num2str(trialsSel{row}(missingIdx),'%d,'));
                 else
                 end
-                signalDataSel{row,col} = signalData{condsToUse(row),col}(repmat(selRowIx,[2,1]),:,trialsSel{condsToUse(row)}); % repmat because the first half is real, second half is imag with same ordering
-                noise1Sel{row,col}     =     noise1{condsToUse(row),col}(repmat(selRowIx,[2,1]),:,trialsSel{condsToUse(row)});
-                noise2Sel{row,col}     =     noise2{condsToUse(row),col}(repmat(selRowIx,[2,1]),:,trialsSel{condsToUse(row)});
+                signalDataSel{row,col} = signalData{condsToUse(row),col}(repmat(selRowIx,[2,1]),:,trialsSel{row}); % repmat because the first half is real, second half is imag with same ordering
+                noise1Sel{row,col}     =     noise1{condsToUse(row),col}(repmat(selRowIx,[2,1]),:,trialsSel{row});
+                noise2Sel{row,col}     =     noise2{condsToUse(row),col}(repmat(selRowIx,[2,1]),:,trialsSel{row});
 
                 binLevelsSel{row} = binLevels{condsToUse(row)}(binsToUse+1); % add one, because bin level 0 = average
             end
