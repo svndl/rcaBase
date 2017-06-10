@@ -1,4 +1,4 @@
-function [cellData,indF,indB,noiseCell1,noiseCell2,freqsAnalyzed,binLevels,chanIncluded]=textExportToRca(pathname,dataType)
+function [cellData,indF,indB,noiseCell1,noiseCell2,freqLabels,binLabels,chanIncluded]=textExportToRca(pathname,dataType)
     if nargin<2 || isempty(dataType), dataType='RLS'; fprintf('Using RLS. '); end;
     if nargin<1, error('Path to datafiles is required'); end
 
@@ -19,9 +19,11 @@ function [cellData,indF,indB,noiseCell1,noiseCell2,freqsAnalyzed,binLevels,chanI
     cellData=cell(nFilenames,1);
     noiseCell1=cell(nFilenames,1);
     noiseCell2=cell(nFilenames,1);
-    binLevels=cell(nFilenames,1);
+    binLabels=cell(nFilenames,1);
+    freqLabels=cell(nFilenames,1);
+    indB=cell(nFilenames,1);
+    indF=cell(nFilenames,1);
 
-    fcnt = 1;
     for f=1:length(filenames)
         % check filename
         if ~strcmp(filenames(f).name(1:3),dataType)
@@ -29,7 +31,7 @@ function [cellData,indF,indB,noiseCell1,noiseCell2,freqsAnalyzed,binLevels,chanI
         else
         end
 
-        [~,freqsAnalyzed,binLevelsCrnt,data]=getSweepDataFlex(fullfile(pathname,filenames(f).name));
+        [~,freqCrnt,binLabelsCrnt,data]=getSweepDataFlex(fullfile(pathname,filenames(f).name));
 
         % set values
         tempName = filenames(f).name;
@@ -41,8 +43,10 @@ function [cellData,indF,indB,noiseCell1,noiseCell2,freqsAnalyzed,binLevels,chanI
         nFreqs=numel(freqsToUse);
         nChannels=numel(channelsToUse);
         nBins=numel(binsToUse);
-
-        binLevels{condIdx,1} = binLevelsCrnt(1:nBins);
+        
+        % assign frequency and bin labels
+        binLabels{condIdx} = binLabelsCrnt(1:nBins)';
+        freqLabels{condIdx} = freqCrnt(freqsToUse);
 
         if isempty(data)
             warning('No data found in %s',filenames(f).name)
@@ -99,8 +103,7 @@ function [cellData,indF,indB,noiseCell1,noiseCell2,freqsAnalyzed,binLevels,chanI
         indF{condIdx}=trialFreqs(trialChannels==channelsToUse(1) & ismember(trialFreqs,freqsToUse) & ismember(trialBins,binsToUse));
         indB{condIdx}=trialBins(trialChannels==channelsToUse(1) & ismember(trialFreqs,freqsToUse) & ismember(trialBins,binsToUse));
     end
-    freqsAnalyzed = freqsAnalyzed(freqsToUse);
-    chanIncluded = channelsToUse;
+    chanIncluded = channelsToUse;   
 end
 %%
 

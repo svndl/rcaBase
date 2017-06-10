@@ -96,7 +96,7 @@ function [avgData,muRcaDataRealAllSubj,muRcaDataImagAllSubj] = aggregateData(rca
         for rc = 1:nCompFromInputData
             for f = 1:nFreqs
                 for b = 1:nBins
-                    curIdx = rcaSettings.freqIndices==rcaSettings.freqsToUse(f) & rcaSettings.binIndices==rcaSettings.binsToUse(b);
+                    curIdx = rcaSettings.freqIndices{condNum}==rcaSettings.freqsToUse(f) & rcaSettings.binIndices{condNum}==rcaSettings.binsToUse(b);
                     muRcaDataRealAllSubj(b,f,rc,1:size(tempReal(curIdx,rc,:),3),condNum) = tempReal(curIdx,rc,:);
                     muRcaDataImagAllSubj(b,f,rc,1:size(tempImag(curIdx,rc,:),3),condNum) = tempImag(curIdx,rc,:);
                 end
