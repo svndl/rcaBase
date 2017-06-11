@@ -70,22 +70,51 @@ nSubjects=numel(pathnames);
 sensorData={};
 cellNoiseData1={};
 cellNoiseData2={};
-freqIndices=cell(nSubjects,1);
-binIndices=cell(nSubjects,1);
+subFreqIdx=cell(nSubjects,1);
+subBinIdx=cell(nSubjects,1);
+subFreqLabels=cell(nSubjects,1);
+subBinLabels=cell(nSubjects,1);
 fprintf('Reading in sensor data from provided path names...\n')
 s = 1;
+assigned = false(1,length(condsToUse));
 while (s <= nSubjects)
     sourceDataFileName = sprintf('%s/sourceData_%s.mat',pathnames{s},dataType);
     if isempty(dir(sourceDataFileName)) || forceSourceData
         createSourceDataMat(pathnames{s});
     end
-    [signalData,freqIndices{s},binIndices{s},noise1,noise2,freqLabels,binLevels] = selectDataForTraining(sourceDataFileName,binsToUse,freqsToUse,condsToUse,trialsToUse);
+    [signalData,noise1,noise2,subFreqIdx{s},subBinIdx{s},subFreqLabels{s},subBinLabels{s}] = selectDataForTraining(sourceDataFileName,binsToUse,freqsToUse,condsToUse,trialsToUse);
     sensorData(:,s)=signalData;
     cellNoiseData1(:,s)=noise1;
     cellNoiseData2(:,s)=noise2;
+    
+    for c = 1:length(condsToUse)
+        if ~any(isnan(subFreqIdx{s}{c}))
+            if assigned(c)
+                % test against master list
+                isMatched  = [isequal(freqIndices{c},subFreqIdx{s}{c}), ...
+                              isequal(binIndices{c},subBinIdx{s}{c}), ...
+                              isequal(freqLabels{c},subFreqLabels{s}{c}), ...
+                              isequal(binLabels{c},subBinLabels{s}{c})];
+                if sum( ~isMatched ) > 0
+                    error('Frequency and bin indices vary across subjects: check consistency of DFT/RLS exports\n.');
+                else
+                    clear isMatched;
+                end
+            else
+                assigned(c) = true;
+                % assign to master list
+                freqIndices{c} = subFreqIdx{s}{c};
+                binIndices{c} = subBinIdx{s}{c};
+                freqLabels{c} = subFreqLabels{s}{c};
+                binLabels{c} = subBinLabels{s}{c};
+            end
+        else
+        end
+    end
     fprintf('Done selecting data for subject %d/%d: %s\n',s,nSubjects,pathnames{s});
     s = s + 1;
 end
+
 nChannels = size(sensorData{1,1},2);
 if computeComparison
     if chanToCompare>nChannels
@@ -94,15 +123,6 @@ if computeComparison
     end
 end
 
-%% check freq and bin indices for consistency across subjects
-for s=1:nSubjects
-    if sum(abs(freqIndices{s}-freqIndices{1}))~=0 && sum(abs(binIndices{s}-binIndices{1}))~=0
-        error('Frequency and bin indices vary across subjects: check consistency of DFT/RLS exports\n.');
-    end
-end
-% if they're all the same, make into a regular array
-freqIndices=freqIndices{1};
-binIndices=binIndices{1};
 %% run RCA
 fprintf('Running RCA...\n');
 warning('off','all')
@@ -135,7 +155,7 @@ rcaSettings.nReg = nReg;
 rcaSettings.nComp = nComp;
 rcaSettings.chanToCompare = chanToCompare;
 rcaSettings.freqLabels = freqLabels; 
-rcaSettings.binLevels = binLevels;
+rcaSettings.binLevels = binLabels;
 rcaSettings.dataType = dataType;
 rcaSettings.RCplottingInfo = plotSettings;
 runDate = datestr(clock,26);
