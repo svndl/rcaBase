@@ -74,6 +74,7 @@ function [avgData,muRcaDataRealAllSubj,muRcaDataImagAllSubj] = aggregateData(rca
     for condNum = 1:nConditions
         tempReal = [];
         tempImag = [];
+        tempZ = [];
         for s=1:nSubjects
             if trialError
                 nanSet = nan(nBins,nFreqs,nCompFromInputData,nSubjects*nTrials);
@@ -85,8 +86,8 @@ function [avgData,muRcaDataRealAllSubj,muRcaDataImagAllSubj] = aggregateData(rca
                 % grab all subjects' data, averaging over trials: 
                 tempReal = cat(3,tempReal,nanmean(rcaDataReal{condNum,s},3));
                 tempImag = cat(3,tempImag,nanmean(rcaDataImag{condNum,s},3));
-                tempZ = computeZsnr(rcaDataReal{condNum,s},rcaDataImag{condNum,s});
             end
+            tempZ = cat(3,tempZ, computeZsnr(rcaDataReal{condNum,s},rcaDataImag{condNum,s}) );
         end
         muRcaDataRealAllSubj(:,:,:,:,condNum) = nanSet;
         muRcaDataImagAllSubj(:,:,:,:,condNum) = nanSet;
@@ -192,7 +193,11 @@ function outZ = computeZsnr(realVals,imagVals)
         xyData = [realVals(:,z),imagVals(:,z)];
         nanVals = sum(isnan(xyData),2)>0;
         % use standard deviation, to compute the zSNR
-        [ampErr,zSNR] = fitErrorEllipse(xyData(~nanVals,:),'1STD',false);
+        if size( xyData(~nanVals,:) ) > 1
+            [ampErr,zSNR] = fitErrorEllipse(xyData(~nanVals,:),'1STD',false);
+        else
+            zSNR = NaN;
+        end
         outZ(:,z) = zSNR;
     end
      % move trial dimension back to third
