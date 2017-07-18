@@ -77,8 +77,11 @@ function [signalDataSel,noise1Sel,noise2Sel,indFSel,indBSel,freqLabelsSel,binLab
             noise1Sel{c}     =     noise1{condsToUse(c)}(repmat(selRowIx,[2,1]),:,curTrials);
             noise2Sel{c}     =     noise2{condsToUse(c)}(repmat(selRowIx,[2,1]),:,curTrials);
             
+            % find non-empty frequency indices
+            nonEmpty = find(cell2mat(cellfun(@(x) ~isempty(x),indF,'uni',false)));
+            % find first among conditions to use
+            nonEmpty = min(nonEmpty(ismember(nonEmpty,condsToUse)));
             % check if indices are unequal
-            nonEmpty = find(cell2mat(cellfun(@(x) ~isempty(x),indF(:),'uni',false)),1,'first');
             if any ( indF{nonEmpty} ~= indF{condsToUse(c)} )
                 error('frequency indices are not matched across conditions');
             elseif any ( indB{nonEmpty} ~= indB{condsToUse(c)} )
