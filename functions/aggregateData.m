@@ -194,7 +194,7 @@ function outZ = computeZsnr(realVals,imagVals)
         nanVals = sum(isnan(xyData),2)>0;
         % use standard deviation, to compute the zSNR
         if size( xyData(~nanVals,:) ) > 1
-            [ampErr,zSNR] = fitErrorEllipse(xyData(~nanVals,:),'1STD',false);
+            [ampErr,~,zSNR] = fitErrorEllipse(xyData(~nanVals,:),'1STD',false);
         else
             zSNR = NaN;
         end
