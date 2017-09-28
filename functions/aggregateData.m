@@ -100,7 +100,7 @@ function [avgData,muRcaDataRealAllSubj,muRcaDataImagAllSubj] = aggregateData(rca
                     curIdx = rcaSettings.freqIndices{condNum}==rcaSettings.freqsToUse(f) & rcaSettings.binIndices{condNum}==rcaSettings.binsToUse(b);
                     muRcaDataRealAllSubj(b,f,rc,1:size(tempReal(curIdx,rc,:),3),condNum) = tempReal(curIdx,rc,:);
                     muRcaDataImagAllSubj(b,f,rc,1:size(tempImag(curIdx,rc,:),3),condNum) = tempImag(curIdx,rc,:);
-                    zRcaDataAllSubj(b,f,rc,1:size(tempImag(curIdx,rc,:),3),condNum) = tempZ(curIdx,rc,:);
+                    zRcaDataAllSubj(b,f,rc,1:size(tempZ(curIdx,rc,:),3),condNum) = tempZ(curIdx,rc,:);
                 end
             end
         end
@@ -193,7 +193,7 @@ function outZ = computeZsnr(realVals,imagVals)
         xyData = [realVals(:,z),imagVals(:,z)];
         nanVals = sum(isnan(xyData),2)>0;
         % use standard deviation, to compute the zSNR
-        if size( xyData(~nanVals,:) ) > 1
+        if size( xyData(~nanVals,:) ) > 2
             [ampErr,~,zSNR] = fitErrorEllipse(xyData(~nanVals,:),'1STD',false);
         else
             zSNR = NaN;
