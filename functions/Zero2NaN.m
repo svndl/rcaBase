@@ -1,4 +1,4 @@
-function mOut = pkZero2NaN(m,dim)
+function mOut = Zero2NaN(m,dim)
     mOut = m;
     for d=1:length(dim)
         if dim(d)>3
