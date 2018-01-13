@@ -1,8 +1,7 @@
-function [avgData,muRcaDataRealAllSubj,muRcaDataImagAllSubj] = aggregateData(rcaData,rcaSettings,keepConditions,ampErrorType,trialError,nrFit)
+function [avgData,muRcaDataRealAllSubj,muRcaDataImagAllSubj] = aggregateData(rcaStruct,keepConditions,ampErrorType,trialError,nrFit)
     % [avgData] = aggregateBins(rcaData,rcaSettings,[keepConditions],[ampErrorType])
     %
-    % rcaData: created during call to rcaSweep
-    % rcaSettings: created during call to rcaSweep
+    % rcaStruct: created during call to rcaSweep
     %
     % avgData is a struct containing subject and trial averaged data that
     % contains the following fields:
@@ -17,21 +16,27 @@ function [avgData,muRcaDataRealAllSubj,muRcaDataImagAllSubj] = aggregateData(rca
     %   dimension to each array.
     % if ampErrorType is specified, then an additional field is returned:
     %
-    %   ampErrBins: bin-by-harmonic-by-component array of RC amplitude errors
-    %       as estimated by specified ampErrorType: 'SEM' '95CI' or a string specifying
-    %       a different percentage CI formated following: '%.1fCI'. Default is
-    %       'SEM' (uses function getErrorEllipse.m).
+    % ampErrBins: bin-by-harmonic-by-component array of RC amplitude errors
+    %      as estimated by specified ampErrorType: 'SEM' '95CI' or a string specifying
+    %      a different percentage CI formated following: '%.1fCI'. Default is
+    %      'SEM' (uses function getErrorEllipse.m).
     
-    %   nrFit: freq x rc x condition logical, indicating whether or not to do Naka-Rushton fitting
+    % nrFit: freq x rc x condition logical, indicating whether or not to do Naka-Rushton fitting
 
     %% 
-
-    if nargin<2, error('You must provide the rcaSettings struct created when your rca data were created.'); end
-    if nargin<3, keepConditions=false; end
-    if (nargin<4 || isempty(ampErrorType)), calcErrors=false; else calcErrors = true; end
-    if (nargin<5 || isempty(trialError)), trialError=false; else end
-    if (nargin<6 ), nrFit=[]; else end
-
+    if nargin<2, keepConditions=false; end
+    if (nargin<3 || isempty(ampErrorType)), ampErrorType = 'none'; else end
+    if (nargin<4 || isempty(trialError)), trialError = false; else end
+    if (nargin<5 ), nrFit=[]; else end
+    
+    rcaSettings = rcaStruct.settings;
+    % add comparison data as last component
+    if isfield(rcaStruct,'comparisonData')
+        rcaData = cellfun(@(x,y) cat(2,x,y), rcaStruct.data,rcaStruct.comparisonData,'uni',false);
+    else
+        rcaData = rcaStruct.data;
+    end
+   
     nSubjects = size(rcaData,2);
 
     if ~keepConditions
@@ -43,13 +48,40 @@ function [avgData,muRcaDataRealAllSubj,muRcaDataImagAllSubj] = aggregateData(rca
     nConditions = size(rcaData,1);
     nFreqs = length(rcaSettings.freqsToUse);
     nBins = length(rcaSettings.binsToUse);
-    nCompFromInputData = max(max(cellfun(@(x) size(x,2),rcaData)));
+    nCompFromInputData = max(max(cellfun(@(x) size(x,2),rcaData))); % note, includes comparison data
     nTrials = max(max(cellfun(@(x) size(x,3),rcaData)));
 
+    % do the noise
+    % add comparison data, and compute the amplitudes, which is all you need
+    if isfield(rcaStruct,'noiseData')
+        ampNoiseBins = zeros(nBins,nFreqs,nCompFromInputData,nConditions);
+        ampNoiseBinsSubjects = zeros(nBins,nFreqs,nCompFromInputData,nSubjects,nConditions);
+        for z = 1:2
+            if z == 1
+                % lower
+                noiseStruct.data = rcaStruct.noiseData.lowerSideBand;
+                noiseStruct.comparisonData = rcaStruct.comparisonNoiseData.lowerSideBand;
+            else
+                noiseStruct.data = rcaStruct.noiseData.higherSideBand;
+                noiseStruct.comparisonData = rcaStruct.comparisonNoiseData.higherSideBand;
+            end
+            noiseStruct.settings = rcaSettings;
+            noiseStruct.Out = aggregateData(noiseStruct,keepConditions,'none',trialError,[]); % do not compute NR or error
+            ampNoiseBins = noiseStruct.Out.ampBins + ampNoiseBins;
+            ampNoiseBinsSubjects = noiseStruct.Out.subjectAmp + ampNoiseBinsSubjects;
+            clear noiseStruct;
+        end
+        ampNoiseBins = ampNoiseBins./2;
+        ampNoiseBinsSubjects =  ampNoiseBinsSubjects./2;
+    else
+        ampNoiseBins = nan(nBins,nFreqs,nCompFromInputData,nConditions);
+        ampNoiseBinsSubjects = nan(nBins,nFreqs,nCompFromInputData,nSubjects,nConditions);
+    end
+    
     % convert to real/imaginary
     [rcaDataReal,rcaDataImag] = getRealImag(rcaData);
 
-    if calcErrors        
+    if ~strcmp(ampErrorType,'none')        
         ampErrBins = nan(nBins,nFreqs,nCompFromInputData,nConditions,2);
         tPval = nan(nBins,nFreqs,nCompFromInputData,nConditions);
         tSqrd = nan(nBins,nFreqs,nCompFromInputData,nConditions);
@@ -59,11 +91,12 @@ function [avgData,muRcaDataRealAllSubj,muRcaDataImagAllSubj] = aggregateData(rca
     muRcaDataReal = nan(nBins,nFreqs,nCompFromInputData,nConditions);
     muRcaDataImag = nan(nBins,nFreqs,nCompFromInputData,nConditions);
     
-    NR_pOpt = nan(4,nFreqs,nCompFromInputData,nConditions);
+    NR_Params = nan(5,nFreqs,nCompFromInputData,nConditions);
     NR_R2 = nan(1,nFreqs,nCompFromInputData,nConditions);
     NR_Range = nan(1,nFreqs,nCompFromInputData,nConditions);
     NR_hModel = [];
-    NR_pOpt_JKSE = nan(4,nFreqs,nCompFromInputData,nConditions);
+    NR_JK_SE = nan(5,nFreqs,nCompFromInputData,nConditions);
+    NR_JK_Params = nan(5,nSubjects,nFreqs,nCompFromInputData,nConditions);
     
     % assign default value to nrFit
     if isempty(nrFit)
@@ -112,19 +145,25 @@ function [avgData,muRcaDataRealAllSubj,muRcaDataImagAllSubj] = aggregateData(rca
     % fit Naka Rushton on means for all conditions
     if any(nrFit(:))
         fitData = sqrt(muRcaDataReal.^2+muRcaDataImag.^2);
-        [ NR_pOpt, NR_R2, NR_Range, NR_hModel ] = FitNakaRushton(binLevels, fitData);
+        fitNoise = repmat(nanmean(ampNoiseBins,4),[1,1,1,nConditions]); % use same noise across conditions
+        % [ NR_Params, NR_R2, NR_Range, NR_hModel ] = FitNakaRushton(binLevels, fitData, ampNoiseBins);
+        % [ NR_Params, NR_R2, NR_hModel ] = FitNakaRushtonFixed(binLevels, fitData,ampNoiseBins);
+        [ NR_Params, NR_R2, NR_hModel ] = FitNakaRushtonEq(binLevels, fitData);
+        % [ NR_Params, NR_R2, NR_hModel ] = FitNakaRushtonNoise(binLevels, fitData,fitNoise);
+
         clear fitData;
     else
     end
     
-    if calcErrors  
+    if ~strcmp(ampErrorType,'none')  
         for condNum = 1:nConditions
             for rc=1:nCompFromInputData
                 for f=1:nFreqs
-                    realSubjs(1:nBins,:) = squeeze(muRcaDataRealAllSubj(:,f,rc,:,condNum));
-                    imagSubjs(1:nBins,:) = squeeze(muRcaDataImagAllSubj(:,f,rc,:,condNum));
+                    testReal(1:nBins,:) = squeeze(muRcaDataRealAllSubj(:,f,rc,:,condNum));
+                    testImag(1:nBins,:) = squeeze(muRcaDataImagAllSubj(:,f,rc,:,condNum));
+                    testNoise(1:nBins,:) = squeeze(nanmean(ampNoiseBinsSubjects(:,f,rc,:,:),5));
                     for b=1:nBins
-                        xyData = [realSubjs(b,:)' imagSubjs(b,:)'];
+                        xyData = [testReal(b,:)' testImag(b,:)'];
                         if size(xyData,1)<2
                             keyboard;
                         end
@@ -138,14 +177,18 @@ function [avgData,muRcaDataRealAllSubj,muRcaDataImagAllSubj] = aggregateData(rca
                         
                     end
                     if nrFit(f,rc,condNum)
-                        for s = 1:size(realSubjs,2) % number of subjects, or subject x trials
-                            sIdx = true(size(realSubjs,2),1);
+                        for s = 1:size(testReal,2) % number of subjects, or subject x trials
+                            sIdx = true(size(testReal,2),1);
                             sIdx(s) = false;
-                            fitData(:,s) = sqrt( nanmean(realSubjs(:,sIdx),2).^2 + nanmean(imagSubjs(:,sIdx),2).^2 );
+                            jkData(:,s) = sqrt( nanmean(testReal(:,sIdx),2).^2 + nanmean(testImag(:,sIdx),2).^2 );
+                            jkNoise(:,s) = nanmean(testNoise(:,sIdx),2);
                         end
-                        NR_JK_pOpt = FitNakaRushton(binLevels, fitData);
-                        NR_pOpt_JKSE(:,f,rc,condNum) = getParSE( NR_JK_pOpt );
-                        clear NR_JK_pOpt; clear fitData;
+                        %jkParams = FitNakaRushton(binLevels, jkData,jkNoise);
+                        jkParams = FitNakaRushtonEq(binLevels, jkData);
+                        %jkParams = FitNakaRushtonNoise(binLevels, jkData,jkNoise);
+                        NR_JK_SE(:,f,rc,condNum) = jackKnifeErr( jkParams' );
+                        NR_JK_Params(:,:,f,rc,condNum) = jkParams;
+                        clear jkParams; clear jkData;
                     else
                     end
                 end
@@ -157,23 +200,27 @@ function [avgData,muRcaDataRealAllSubj,muRcaDataImagAllSubj] = aggregateData(rca
     avgData.realBins = muRcaDataReal;
     avgData.imagBins = muRcaDataImag;
     avgData.ampBins = sqrt(muRcaDataReal.^2+muRcaDataImag.^2);
+    avgData.ampNoiseBins = ampNoiseBins;
     avgData.phaseBins = atan(muRcaDataImag./muRcaDataReal);
     avgData.zSNR.mean = zRcaData;
     avgData.zSNR.subj = zRcaDataAllSubj;
+    avgData.subjectAmp = sqrt(muRcaDataRealAllSubj.^2+muRcaDataImagAllSubj.^2);
+    avgData.subjectAmpNoise = ampNoiseBinsSubjects;
 
     % Naka-Rushton output
-    avgData.NakaRushton.pOpt = NR_pOpt;
+    avgData.NakaRushton.Params = NR_Params;
     avgData.NakaRushton.R2 = NR_R2;
-    avgData.NakaRushton.Range = NR_Range;
+    %avgData.NakaRushton.Range = NR_Range;
     avgData.NakaRushton.hModel = NR_hModel;
     
-    if calcErrors
+    if ~strcmp(ampErrorType,'none') 
         avgData.ampErrBins = ampErrBins;
         avgData.ampErrType = ampErrorType;
         avgData.tSqrdSig = tSig;
         avgData.tSqrdP = tPval;
         avgData.tSqrdVal = tSqrd;
-        avgData.NakaRushton.JKSE = NR_pOpt_JKSE;
+        avgData.NakaRushton.JackKnife.SE = NR_JK_SE;
+        avgData.NakaRushton.JackKnife.Params = NR_JK_Params;
     end
 end
 
@@ -203,11 +250,11 @@ function outZ = computeZsnr(realVals,imagVals)
      % move trial dimension back to third
     outZ = permute(outZ,[3,2,1]);
 end
-
-function pSE = getParSE( pJK )
-        % function from Spero for computing jack-knifed SEs for NR parameters
-		nDim = ndims( pJK );
-		nSubj = size( pJK, nDim );
-		pSE = sqrt( ( nSubj - 1 ) / nSubj * sum( bsxfun( @minus, pJK, mean(pJK,nDim) ).^2, nDim ) );
-% 		p(:) = nSubj * p - ( nSubj - 1 ) * mean( pJK, nDim );			% unbiased estimate of mean.  ???making things go negative???, bar graphs should match plot anyhow
-end
+ 
+% function pSE = getParSE( pJK )
+%         % function from Spero for computing jack-knifed SEs for NR parameters
+% 		nDim = ndims( pJK );
+% 		nSubj = size( pJK, nDim );
+% 		pSE = sqrt( ( nSubj - 1 ) / nSubj * sum( bsxfun( @minus, pJK, mean(pJK,nDim) ).^2, nDim ) );
+% % 		p(:) = nSubj * p - ( nSubj - 1 ) * mean( pJK, nDim );			% unbiased estimate of mean.  ???making things go negative???, bar graphs should match plot anyhow
+% end
