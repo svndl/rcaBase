@@ -55,7 +55,11 @@ function [avgData,muRcaDataRealAllSubj,muRcaDataImagAllSubj] = aggregateData(rca
     % add comparison data, and compute the amplitudes, which is all you need
     if isfield(rcaStruct,'noiseData')
         ampNoiseBins = zeros(nBins,nFreqs,nCompFromInputData,nConditions);
-        ampNoiseBinsSubjects = zeros(nBins,nFreqs,nCompFromInputData,nSubjects,nConditions);
+        if trialError
+            ampNoiseBinsSubjects = zeros(nBins,nFreqs,nCompFromInputData,nSubjects*nTrials,nConditions);
+        else
+            ampNoiseBinsSubjects = zeros(nBins,nFreqs,nCompFromInputData,nSubjects,nConditions);
+        end
         for z = 1:2
             if z == 1
                 % lower
