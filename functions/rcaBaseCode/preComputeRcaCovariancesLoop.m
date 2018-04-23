@@ -34,12 +34,6 @@ fprintf('Selected %d subjects and %d condition(s) for training... \n',nSubjects,
 sumXX=zeros(nCond,nSubjects,nElectrodes,nElectrodes);sumYY=zeros(nCond,nSubjects,nElectrodes,nElectrodes);sumXY=zeros(nCond,nSubjects,nElectrodes,nElectrodes);
 nPointsInXX=zeros(nCond,nSubjects,nElectrodes,nElectrodes);nPointsInYY=zeros(nCond,nSubjects,nElectrodes,nElectrodes);nPointsInXY=zeros(nCond,nSubjects,nElectrodes,nElectrodes);
 
-if verLessThan('matlab','8.2') % 8.2 = version number for R2013b
-    matlabpool;
-else
-    parpool; % works for all versions of matlab from R2013b forward (matlabpool was removed in R2015a)
-end
-
 for cond=1:nCond
     for subj=1:nSubjects
         fprintf('Computing covariances for subject %d/%d and condition %d/%d... \n',subjRange(subj),nSubjects,condRange(cond),nCond);
@@ -53,7 +47,7 @@ for cond=1:nCond
         nPairs=size(pindx,1);
         
         
-        if nTrials>30
+        if nTrials>=30
 
             %% compute means
             thisVolume=permute(thisVolume,[2 1 3]); % electrode x sample x trials
@@ -66,6 +60,19 @@ for cond=1:nCond
             % not as slow as it would seem (easies memory load)
             sXX=0; sXY=0; sYY=0;
             nXX=0; nXY=0; nYY=0;
+            
+            % open matlabpool
+            if subj == 1 && cond == 1
+                try
+                    matlabpool
+                    closePool=1;
+                catch
+                    parpool
+                    closePool=0;
+                end
+            else
+            end
+            
             parfor p=1:nPairs
                 M1=squeeze(thisVolume(:,:,pindx(p,1)));
                 M2=squeeze(thisVolume(:,:,pindx(p,2)));
@@ -81,10 +88,21 @@ for cond=1:nCond
                 sYY=sYY+M2*M2';
                 sXY=sXY+M1*M2';
             end
+            
             nPointsInXX(cond,subj,:,:)= nXX;
             nPointsInYY(cond,subj,:,:)= nYY;
             nPointsInXY(cond,subj,:,:)= nXY;
             sumXX(cond,subj,:,:)=sXX; sumYY(cond,subj,:,:)=sYY; sumXY(cond,subj,:,:)=sXY;
+            
+            % close matlabpool
+            if subj == nSubjects && cond == nCond
+                if closePool
+                    matlabpool close
+                else
+                    delete(gcp('nocreate'));
+                end
+            else
+            end
             
         else  %if less than 30 trials, vectorize
             
@@ -110,11 +128,7 @@ end
 sumXX=squeeze(sumXX); sumYY=squeeze(sumYY); sumXY=squeeze(sumXY);
 nPointsInXX=squeeze(nPointsInXX); nPointsInYY=squeeze(nPointsInYY);  nPointsInXY=squeeze(nPointsInXY);
 
-if verLessThan('matlab','8.2')
-    matlabpool close;
-else
-    delete(gcp); %closes the parpool
-end
+
 
 
 
