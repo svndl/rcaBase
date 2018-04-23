@@ -43,8 +43,8 @@ else  % cell mode
             for comp=1:nComp
                 Y{c,s}(:,comp,:)= squeeze ( nansum ( data3D .* repmat(W(:,comp)',[nSamples 1 nTrials]) , 2 ) )  ;
             end
-             % find values data area NaNs across all electrodes
-            nan_idx = repmat(all(isnan(data3D),2),1,size(Y,2),1);
+            % index for samples when data have NaNs across all electrodes
+            nan_idx = repmat(all(isnan(data3D),2),1,size(Y{c,s},2),1);
             % put NaNs back into Y
             Y{c,s}(nan_idx) = NaN;
         end
