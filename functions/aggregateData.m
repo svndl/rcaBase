@@ -46,10 +46,19 @@ function [avgData,muRcaDataRealAllSubj,muRcaDataImagAllSubj] = aggregateData(rca
     end
 
     nConditions = size(rcaData,1);
-    nFreqs = length(rcaSettings.freqsToUse);
-    nBins = length(rcaSettings.binsToUse);
-    nCompFromInputData = max(max(cellfun(@(x) size(x,2),rcaData))); % note, includes comparison data
+    % get freqs and bins from the data
+    dataFreqs = unique(rcaSettings.freqIndices);
+    dataBins = unique(rcaSettings.binIndices);
+    nFreqs = length(dataFreqs);
+    nBins = length(dataBins);
+    
     nTrials = max(max(cellfun(@(x) size(x,3),rcaData)));
+    nCompFromInputData = max(max(cellfun(@(x) size(x,2),rcaData))); % note, includes comparison data
+    nSampFromInputData = max(max(cellfun(@(x) size(x,1),rcaData)));
+    if nFreqs*nBins*2 ~= nSampFromInputData
+        error('number of frequencies and bins does not match the number of samples');
+    else
+    end
 
     % do the noise
     % add comparison data, and compute the amplitudes, which is all you need
@@ -130,11 +139,11 @@ function [avgData,muRcaDataRealAllSubj,muRcaDataImagAllSubj] = aggregateData(rca
         muRcaDataImagAllSubj(:,:,:,:,condNum) = nanSet;
         zRcaDataAllSubj(:,:,:,:,condNum) = nanSet;
         % split bins and frequencies, and make sure only selected components are included
-        binLevels = cell2mat(cellfun(@(x) str2num(x), rcaSettings.binLevels{condNum},'uni',false));
+        binLabels = cell2mat(cellfun(@(x) str2num(x), rcaSettings.binLabels,'uni',false));
         for rc = 1:nCompFromInputData
             for f = 1:nFreqs
                 for b = 1:nBins
-                    curIdx = rcaSettings.freqIndices{condNum}==rcaSettings.freqsToUse(f) & rcaSettings.binIndices{condNum}==rcaSettings.binsToUse(b);
+                    curIdx = find(rcaSettings.freqIndices==dataFreqs(f) & rcaSettings.binIndices==dataBins(b));
                     muRcaDataRealAllSubj(b,f,rc,1:size(tempReal(curIdx,rc,:),3),condNum) = tempReal(curIdx,rc,:);
                     muRcaDataImagAllSubj(b,f,rc,1:size(tempImag(curIdx,rc,:),3),condNum) = tempImag(curIdx,rc,:);
                     zRcaDataAllSubj(b,f,rc,1:size(tempZ(curIdx,rc,:),3),condNum) = tempZ(curIdx,rc,:);
@@ -150,10 +159,10 @@ function [avgData,muRcaDataRealAllSubj,muRcaDataImagAllSubj] = aggregateData(rca
     if any(nrFit(:))
         fitData = sqrt(muRcaDataReal.^2+muRcaDataImag.^2);
         fitNoise = repmat(nanmean(ampNoiseBins,4),[1,1,1,nConditions]); % use same noise across conditions
-        % [ NR_Params, NR_R2, NR_Range, NR_hModel ] = FitNakaRushton(binLevels, fitData, ampNoiseBins);
-        % [ NR_Params, NR_R2, NR_hModel ] = FitNakaRushtonFixed(binLevels, fitData,ampNoiseBins);
-        [ NR_Params, NR_R2, NR_hModel ] = FitNakaRushtonEq(binLevels, fitData);
-        % [ NR_Params, NR_R2, NR_hModel ] = FitNakaRushtonNoise(binLevels, fitData,fitNoise);
+        % [ NR_Params, NR_R2, NR_Range, NR_hModel ] = FitNakaRushton(binLabels, fitData, ampNoiseBins);
+        % [ NR_Params, NR_R2, NR_hModel ] = FitNakaRushtonFixed(binLabels, fitData,ampNoiseBins);
+        [ NR_Params, NR_R2, NR_hModel ] = FitNakaRushtonEq(binLabels, fitData);
+        % [ NR_Params, NR_R2, NR_hModel ] = FitNakaRushtonNoise(binLabels, fitData,fitNoise);
 
         clear fitData;
     else
@@ -187,9 +196,9 @@ function [avgData,muRcaDataRealAllSubj,muRcaDataImagAllSubj] = aggregateData(rca
                             jkData(:,s) = sqrt( nanmean(testReal(:,sIdx),2).^2 + nanmean(testImag(:,sIdx),2).^2 );
                             jkNoise(:,s) = nanmean(testNoise(:,sIdx),2);
                         end
-                        %jkParams = FitNakaRushton(binLevels, jkData,jkNoise);
-                        jkParams = FitNakaRushtonEq(binLevels, jkData);
-                        %jkParams = FitNakaRushtonNoise(binLevels, jkData,jkNoise);
+                        %jkParams = FitNakaRushton(binLabels, jkData,jkNoise);
+                        jkParams = FitNakaRushtonEq(binLabels, jkData);
+                        %jkParams = FitNakaRushtonNoise(binLabels, jkData,jkNoise);
                         NR_JK_SE(:,f,rc,condNum) = jackKnifeErr( jkParams' );
                         NR_JK_Params(:,:,f,rc,condNum) = jkParams;
                         clear jkParams; clear jkData;

@@ -115,6 +115,21 @@ while (s <= nSubjects)
     s = s + 1;
 end
 
+% now check that freqs and bins are consistent across conditions
+isConsistent(1) = all(cellfun(@(x) isequal(freqIndices{1},x), freqIndices));
+isConsistent(2) = all(cellfun(@(x) isequal(binIndices{1},x), binIndices));
+isConsistent(3) = all(cellfun(@(x) isequal(freqLabels{1},x), freqLabels));
+isConsistent(4) = all(cellfun(@(x) isequal(binLabels{1},x), binLabels));
+
+if any(~isConsistent)
+    msg = 'Frequency and bin indices and/or labels vary across conditions \n';
+    error(msg);
+else
+    freqIndices = freqIndices{1};
+    binIndices = binIndices{1};
+    freqLabels = freqLabels{1};
+    binLabels = binLabels{1};
+end
 nChannels = size(sensorData{1,1},2);
 if computeComparison
     if chanToCompare>nChannels
@@ -126,7 +141,7 @@ end
 %% run RCA
 fprintf('Running RCA...\n');
 warning('off','all')
-[rcaData,W,A,Rxx,Ryy,Rxy,dGen,plotSettings]=rcaRun(sensorData,nReg,nComp,[],[],show,rcPlotStyle); 
+[rcaData,W,A,Rxx,Ryy,Rxy,dGen]=rcaRun(sensorData,nReg,nComp,[],[],show,rcPlotStyle); 
 covData.Rxx = Rxx;
 covData.Ryy = Ryy;
 covData.Rxy = Rxy;
@@ -145,30 +160,36 @@ warning('on','all')
 
 %% package some of the necessary variables for plotting/grouping data later on
 rcaSettings.dataFolders = pathnames;
-rcaSettings.freqIndices = freqIndices;
-rcaSettings.binIndices = binIndices;
-rcaSettings.binsToUse = binsToUse;
-rcaSettings.freqsToUse = freqsToUse;
-rcaSettings.condsToUse = condsToUse;
-rcaSettings.trialsToUse = trialsToUse;
+rcaSettings.rcaBins = binsToUse;
+rcaSettings.rcaFreqs = freqsToUse;
+rcaSettings.rcaConds = condsToUse;
+rcaSettings.rcaTrials = trialsToUse;
 rcaSettings.nReg = nReg;
 rcaSettings.nComp = nComp;
 rcaSettings.chanToCompare = chanToCompare;
 rcaSettings.freqLabels = freqLabels; 
-rcaSettings.binLevels = binLabels;
+rcaSettings.binLabels = binLabels;
 rcaSettings.dataType = dataType;
-rcaSettings.RCplottingInfo = plotSettings;
 runDate = datestr(clock,26);
 runDate(strfind(runDate,'/')) ='';
 rcaSettings.runDate = runDate; % on what date was this RCA run?
 
-%% generate final output struct
-rcaStrct.data = rcaData;
-rcaStrct.W = W;
-rcaStrct.A = A;
-rcaStrct.covData = covData; 
-rcaStrct.noiseData = noiseData;
-rcaStrct.comparisonData = comparisonData;
-rcaStrct.comparisonNoiseData = comparisonNoiseData;
-rcaStrct.inputData = sensorData;
-rcaStrct.settings = rcaSettings;
+%% generate final output struct array, organized by frequency in input data
+for f = 1:length(freqsToUse)
+    rcaStrct(f).W = W;
+    rcaStrct(f).A = A;
+    rcaStrct(f).covData = covData;
+    fIdx = repmat(freqIndices==freqsToUse(f),2,1); % repmat because the first half is real, second half is imag with same ordering
+    rcaStrct(f).data = cellfun(@(x) x(fIdx,:,:),rcaData,'uni',false);
+    rcaStrct(f).noiseData.lowerSideBand = cellfun(@(x) x(fIdx,:,:),noiseData.lowerSideBand,'uni',false);
+    rcaStrct(f).noiseData.higherSideBand = cellfun(@(x) x(fIdx,:,:),noiseData.higherSideBand,'uni',false);
+    rcaStrct(f).comparisonData = cellfun(@(x) x(fIdx,:,:),comparisonData,'uni',false);
+    rcaStrct(f).comparisonNoiseData.lowerSideBand = cellfun(@(x) x(fIdx,:,:),comparisonNoiseData.lowerSideBand,'uni',false);
+    rcaStrct(f).comparisonNoiseData.higherSideBand = cellfun(@(x) x(fIdx,:,:),comparisonNoiseData.higherSideBand,'uni',false);
+    rcaStrct(f).inputData = cellfun(@(x) x(fIdx,:,:),sensorData,'uni',false);
+    % output indices that match the data
+    rcaSettings.freqIndices = freqIndices(freqIndices==freqsToUse(f));
+    rcaSettings.binIndices = binIndices(freqIndices==freqsToUse(f));
+    % put into output struct
+    rcaStrct(f).settings = orderfields(rcaSettings);
+end
