@@ -63,11 +63,11 @@ function [avgData,muRcaDataRealAllSubj,muRcaDataImagAllSubj] = aggregateData(rca
     % do the noise
     % add comparison data, and compute the amplitudes, which is all you need
     if isfield(rcaStruct,'noiseData')
-        ampNoiseBins = zeros(nBins,nFreqs,nCompFromInputData,nConditions);
+        ampNoiseBins = zeros(nBins+1,nFreqs,nCompFromInputData,nConditions);
         if trialError
-            ampNoiseBinsSubjects = zeros(nBins,nFreqs,nCompFromInputData,nSubjects*nTrials,nConditions);
+            ampNoiseBinsSubjects = zeros(nBins+1,nFreqs,nCompFromInputData,nSubjects*nTrials,nConditions);
         else
-            ampNoiseBinsSubjects = zeros(nBins,nFreqs,nCompFromInputData,nSubjects,nConditions);
+            ampNoiseBinsSubjects = zeros(nBins+1,nFreqs,nCompFromInputData,nSubjects,nConditions);
         end
         for z = 1:2
             if z == 1
@@ -101,8 +101,9 @@ function [avgData,muRcaDataRealAllSubj,muRcaDataImagAllSubj] = aggregateData(rca
         tSig = nan(nBins,nFreqs,nCompFromInputData,nConditions);
     end
     
-    muRcaDataReal = nan(nBins,nFreqs,nCompFromInputData,nConditions);
-    muRcaDataImag = nan(nBins,nFreqs,nCompFromInputData,nConditions);
+    % nBins + 1, room for average
+    muRcaDataReal = nan(nBins+1,nFreqs,nCompFromInputData,nConditions);
+    muRcaDataImag = nan(nBins+1,nFreqs,nCompFromInputData,nConditions);
     
     NR_Params = nan(5,nFreqs,nCompFromInputData,nConditions);
     NR_R2 = nan(1,nFreqs,nCompFromInputData,nConditions);
@@ -123,12 +124,12 @@ function [avgData,muRcaDataRealAllSubj,muRcaDataImagAllSubj] = aggregateData(rca
         tempZ = [];
         for s=1:nSubjects
             if trialError
-                nanSet = nan(nBins,nFreqs,nCompFromInputData,nSubjects*nTrials);
+                nanSet = nan(nBins+1,nFreqs,nCompFromInputData,nSubjects*nTrials);
                 % grab all subjects' data, without averaging over trials: 
                 tempReal = cat(3,tempReal,rcaDataReal{condNum,s});
                 tempImag = cat(3,tempImag,rcaDataImag{condNum,s});
             else
-                nanSet = nan(nBins,nFreqs,nCompFromInputData,nSubjects);
+                nanSet = nan(nBins+1,nFreqs,nCompFromInputData,nSubjects);
                 % grab all subjects' data, averaging over trials: 
                 tempReal = cat(3,tempReal,nanmean(rcaDataReal{condNum,s},3));
                 tempImag = cat(3,tempImag,nanmean(rcaDataImag{condNum,s},3));
@@ -142,11 +143,18 @@ function [avgData,muRcaDataRealAllSubj,muRcaDataImagAllSubj] = aggregateData(rca
         binLabels = cell2mat(cellfun(@(x) str2num(x), rcaSettings.binLabels,'uni',false));
         for rc = 1:nCompFromInputData
             for f = 1:nFreqs
-                for b = 1:nBins
-                    curIdx = find(rcaSettings.freqIndices==dataFreqs(f) & rcaSettings.binIndices==dataBins(b));
-                    muRcaDataRealAllSubj(b,f,rc,1:size(tempReal(curIdx,rc,:),3),condNum) = tempReal(curIdx,rc,:);
-                    muRcaDataImagAllSubj(b,f,rc,1:size(tempImag(curIdx,rc,:),3),condNum) = tempImag(curIdx,rc,:);
-                    zRcaDataAllSubj(b,f,rc,1:size(tempZ(curIdx,rc,:),3),condNum) = tempZ(curIdx,rc,:);
+                for b = 1:(nBins+1)
+                    if b == nBins+1
+                        % get the vector average over bins
+                        muRcaDataRealAllSubj(b,f,rc,1:size(tempReal(curIdx,rc,:),3),condNum) = nanmean(muRcaDataRealAllSubj(1:nBins,f,rc,1:size(tempReal(curIdx,rc,:),3),condNum));
+                        muRcaDataImagAllSubj(b,f,rc,1:size(tempImag(curIdx,rc,:),3),condNum) = nanmean(muRcaDataImagAllSubj(1:nBins,f,rc,1:size(tempReal(curIdx,rc,:),3),condNum));
+                        zRcaDataAllSubj(b,f,rc,1:size(tempZ(curIdx,rc,:),3),condNum) = nanmean(zRcaDataAllSubj(1:nBins,f,rc,1:size(tempZ(curIdx,rc,:),3),condNum));
+                    else
+                        curIdx = find(rcaSettings.freqIndices==dataFreqs(f) & rcaSettings.binIndices==dataBins(b));
+                        muRcaDataRealAllSubj(b,f,rc,1:size(tempReal(curIdx,rc,:),3),condNum) = tempReal(curIdx,rc,:);
+                        muRcaDataImagAllSubj(b,f,rc,1:size(tempImag(curIdx,rc,:),3),condNum) = tempImag(curIdx,rc,:);
+                        zRcaDataAllSubj(b,f,rc,1:size(tempZ(curIdx,rc,:),3),condNum) = tempZ(curIdx,rc,:);
+                    end
                 end
             end
         end
@@ -154,14 +162,21 @@ function [avgData,muRcaDataRealAllSubj,muRcaDataImagAllSubj] = aggregateData(rca
         muRcaDataReal(:,:,:,condNum) = nanmean(muRcaDataRealAllSubj(:,:,:,:,condNum),4); % weights each trial equally
         muRcaDataImag(:,:,:,condNum) = nanmean(muRcaDataImagAllSubj(:,:,:,:,condNum),4); % weights each trial equally
         zRcaData(:,:,:,condNum) = nanmean(zRcaDataAllSubj(:,:,:,:,condNum),4); % weights each trial equally
+        
+        % compute projected amplitudes
+        realVector = permute(muRcaDataRealAllSubj(:,:,:,:,condNum),[4,1,2,3]);
+        imagVector = permute(muRcaDataImagAllSubj(:,:,:,:,condNum),[4,1,2,3]);
+        tempProject = vectorProjection(realVector,imagVector);
+        projectAmpAllSubj(:,:,:,:,condNum) = permute(tempProject,[2,3,4,1]);
     end
     % fit Naka Rushton on means for all conditions
     if any(nrFit(:))
+        % don't include average in fits
         fitData = sqrt(muRcaDataReal.^2+muRcaDataImag.^2);
         fitNoise = repmat(nanmean(ampNoiseBins,4),[1,1,1,nConditions]); % use same noise across conditions
         % [ NR_Params, NR_R2, NR_Range, NR_hModel ] = FitNakaRushton(binLabels, fitData, ampNoiseBins);
         % [ NR_Params, NR_R2, NR_hModel ] = FitNakaRushtonFixed(binLabels, fitData,ampNoiseBins);
-        [ NR_Params, NR_R2, NR_hModel ] = FitNakaRushtonEq(binLabels, fitData);
+        [ NR_Params, NR_R2, NR_hModel ] = FitNakaRushtonEq(binLabels, fitData(1:nBins,:,:,:));
         % [ NR_Params, NR_R2, NR_hModel ] = FitNakaRushtonNoise(binLabels, fitData,fitNoise);
 
         clear fitData;
@@ -172,10 +187,11 @@ function [avgData,muRcaDataRealAllSubj,muRcaDataImagAllSubj] = aggregateData(rca
         for condNum = 1:nConditions
             for rc=1:nCompFromInputData
                 for f=1:nFreqs
-                    testReal(1:nBins,:) = squeeze(muRcaDataRealAllSubj(:,f,rc,:,condNum));
-                    testImag(1:nBins,:) = squeeze(muRcaDataImagAllSubj(:,f,rc,:,condNum));
-                    testNoise(1:nBins,:) = squeeze(nanmean(ampNoiseBinsSubjects(:,f,rc,:,:),5));
-                    for b=1:nBins
+                    % do include averages when computing error bars
+                    testReal = squeeze(muRcaDataRealAllSubj(:,f,rc,:,condNum));
+                    testImag = squeeze(muRcaDataImagAllSubj(:,f,rc,:,condNum));
+                    testNoise = squeeze(nanmean(ampNoiseBinsSubjects(:,f,rc,:,:),5));
+                    for b=1:nBins+1
                         xyData = [testReal(b,:)' testImag(b,:)'];
                         if size(xyData,1)<2
                             keyboard;
@@ -187,8 +203,11 @@ function [avgData,muRcaDataRealAllSubj,muRcaDataImagAllSubj] = aggregateData(rca
                         tPval(b,f,rc,condNum) = tStruct.pVal;
                         tSqrd(b,f,rc,condNum) = tStruct.tSqrd;
                         tSig(b,f,rc,condNum) = tStruct.H;
-                        
                     end
+                    % do not include averages when computing fitting errors
+                    testReal = squeeze(muRcaDataRealAllSubj(1:nBins,f,rc,:,condNum));
+                    testImag = squeeze(muRcaDataImagAllSubj(1:nBins,f,rc,:,condNum));
+                    testNoise = squeeze(nanmean(ampNoiseBinsSubjects(1:nBins,f,rc,:,:),5));
                     if nrFit(f,rc,condNum)
                         for s = 1:size(testReal,2) % number of subjects, or subject x trials
                             sIdx = true(size(testReal,2),1);
@@ -219,7 +238,8 @@ function [avgData,muRcaDataRealAllSubj,muRcaDataImagAllSubj] = aggregateData(rca
     avgData.zSNR.subj = zRcaDataAllSubj;
     avgData.subjectAmp = sqrt(muRcaDataRealAllSubj.^2+muRcaDataImagAllSubj.^2);
     avgData.subjectAmpNoise = ampNoiseBinsSubjects;
-
+    avgData.subjectAmp_projected = projectAmpAllSubj;
+    
     % Naka-Rushton output
     avgData.NakaRushton.Params = NR_Params;
     avgData.NakaRushton.R2 = NR_R2;
