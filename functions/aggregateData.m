@@ -146,8 +146,8 @@ function [avgData,muRcaDataRealAllSubj,muRcaDataImagAllSubj] = aggregateData(rca
                 for b = 1:(nBins+1)
                     if b == nBins+1
                         % get the vector average over bins
-                        muRcaDataRealAllSubj(b,f,rc,1:size(tempReal(curIdx,rc,:),3),condNum) = nanmean(muRcaDataRealAllSubj(1:nBins,f,rc,1:size(tempReal(curIdx,rc,:),3),condNum));
-                        muRcaDataImagAllSubj(b,f,rc,1:size(tempImag(curIdx,rc,:),3),condNum) = nanmean(muRcaDataImagAllSubj(1:nBins,f,rc,1:size(tempReal(curIdx,rc,:),3),condNum));
+                        muRcaDataRealAllSubj(b,f,rc,1:size(tempReal(curIdx,rc,:),3),condNum) = nanmean(muRcaDataRealAllSubj(1:nBins,f,rc,1:size(tempReal(curIdx,rc,:),3),condNum),1);
+                        muRcaDataImagAllSubj(b,f,rc,1:size(tempImag(curIdx,rc,:),3),condNum) = nanmean(muRcaDataImagAllSubj(1:nBins,f,rc,1:size(tempReal(curIdx,rc,:),3),condNum),1);
                         zRcaDataAllSubj(b,f,rc,1:size(tempZ(curIdx,rc,:),3),condNum) = nanmean(zRcaDataAllSubj(1:nBins,f,rc,1:size(tempZ(curIdx,rc,:),3),condNum));
                     else
                         curIdx = find(rcaSettings.freqIndices==dataFreqs(f) & rcaSettings.binIndices==dataBins(b));
