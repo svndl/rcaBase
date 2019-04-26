@@ -1,4 +1,4 @@
-function rcaStrct = rcaSweep(pathnames,binsToUse,freqsToUse,condsToUse,trialsToUse,nReg,nComp,dataType,chanToCompare,show,rcPlotStyle,forceSourceData)
+function rca_struct = rcaSweep(pathnames,binsToUse,freqsToUse,condsToUse,trialsToUse,nReg,nComp,dataType,chanToCompare,show,rcPlotStyle,forceSourceData)
 % perform RCA on sweep SSVEP data exported to RLS or DFT format
 %
 % [rcaData,W,A,noiseData,compareData,compareNoiseData,freqIndices,binIndices]=RCASWEEP(PATHNAMES,[BINSTOUSE],[FREQSTOUSE],[CONDSTOUSE],[TRIALSTOUSE],[NREG],[NCOMP],[DATATYPE],[COMPARECHAN],[SHOW],[RCPLOTSTYLE])
@@ -176,20 +176,24 @@ rcaSettings.runDate = runDate; % on what date was this RCA run?
 
 %% generate final output struct array, organized by frequency in input data
 for f = 1:length(freqsToUse)
-    rcaStrct(f).W = W;
-    rcaStrct(f).A = A;
-    rcaStrct(f).covData = covData;
+    rca_struct(f).W = W;
+    rca_struct(f).A = A;
+    rca_struct(f).covData = covData;
     fIdx = repmat(freqIndices==freqsToUse(f),2,1); % repmat because the first half is real, second half is imag with same ordering
-    rcaStrct(f).data = cellfun(@(x) x(fIdx,:,:),rcaData,'uni',false);
-    rcaStrct(f).noiseData.lowerSideBand = cellfun(@(x) x(fIdx,:,:),noiseData.lowerSideBand,'uni',false);
-    rcaStrct(f).noiseData.higherSideBand = cellfun(@(x) x(fIdx,:,:),noiseData.higherSideBand,'uni',false);
-    rcaStrct(f).comparisonData = cellfun(@(x) x(fIdx,:,:),comparisonData,'uni',false);
-    rcaStrct(f).comparisonNoiseData.lowerSideBand = cellfun(@(x) x(fIdx,:,:),comparisonNoiseData.lowerSideBand,'uni',false);
-    rcaStrct(f).comparisonNoiseData.higherSideBand = cellfun(@(x) x(fIdx,:,:),comparisonNoiseData.higherSideBand,'uni',false);
-    rcaStrct(f).inputData = cellfun(@(x) x(fIdx,:,:),sensorData,'uni',false);
+    rca_struct(f).data = cellfun(@(x) x(fIdx,:,:),rcaData,'uni',false);
+    rca_struct(f).noiseData.lowerSideBand = cellfun(@(x) x(fIdx,:,:),noiseData.lowerSideBand,'uni',false);
+    rca_struct(f).noiseData.higherSideBand = cellfun(@(x) x(fIdx,:,:),noiseData.higherSideBand,'uni',false);
+    rca_struct(f).comparisonData = cellfun(@(x) x(fIdx,:,:),comparisonData,'uni',false);
+    rca_struct(f).comparisonNoiseData.lowerSideBand = cellfun(@(x) x(fIdx,:,:),comparisonNoiseData.lowerSideBand,'uni',false);
+    rca_struct(f).comparisonNoiseData.higherSideBand = cellfun(@(x) x(fIdx,:,:),comparisonNoiseData.higherSideBand,'uni',false);
+    rca_struct(f).inputData = cellfun(@(x) x(fIdx,:,:),sensorData,'uni',false);
     % output indices that match the data
     rcaSettings.freqIndices = freqIndices(freqIndices==freqsToUse(f));
     rcaSettings.binIndices = binIndices(freqIndices==freqsToUse(f));
     % put into output struct
-    rcaStrct(f).settings = orderfields(rcaSettings);
+    rca_struct(f).settings = orderfields(rcaSettings);
+    % fields for putting aggregate data later (see aggregateData fxn)
+    rca_struct(f).mean = struct([]);
+    rca_struct(f).subjects = struct([]); 
+    rca_struct(f).stats = struct([]); 
 end

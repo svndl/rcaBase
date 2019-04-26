@@ -1,45 +1,102 @@
-function [avgData,muRcaDataRealAllSubj,muRcaDataImagAllSubj] = aggregateData(rcaStruct,keepConditions,ampErrorType,trialError,nrFit)
-    % [avgData] = aggregateBins(rcaData,rcaSettings,[keepConditions],[ampErrorType])
+function rca_struct = aggregateData(rca_struct, keep_conditions, error_type, trial_wise, do_nr)
+    % rca_struct = aggregateData(rca_struct, keep_conditions, error_type, trial_wise, do_nr)
     %
-    % rcaStruct: created during call to rcaSweep
+    % input: 
+    %   rca_struct: created during call to rcaSweep
+    %   keep_conditions: [true]/false
+    %       if false, will average over conditions
+    %   error_type: 'SEM'/'none'/'95CI'
+    %       or a string specifyingn a different percentage 
+    %       CI formated following: '%.1fCI'
+    %   trial-wise: [true]/false
+    %       if true, will compute trial-wise errors and stats
+    %   do_nr: harmonic x rc x condition logical, 
+    %       indicating when to do Naka-Rushton fitting
+    %       (only makes sense to do for sweep data)
+    %       default is not to do it anywhere
     %
-    % avgData is a struct containing subject and trial averaged data that
-    % contains the following fields:
+    % output: function will return rca_struct, and add fields containing 
+    %         aggregate statistics for all components (described below).
+    %   
+    %   Note that 
+    %   (a) the comparison electrode data is automatically added as 
+    %       as an additional component in the output.
+    %   (b) if there is more than one bin in the input (sweep data) the 
+    %       vector average across bins will be added as a final bin.
+    %   (c) In the current iteration of rcaSweep, each rca_struct contains 
+    %       only one harmonic, but harmonic is nonetheless preserved 
+    %       as an output dimension
+    %  
+    %   "mean", with the following subfields:
+    %       real_signal:        REAL coefficients, vector-averaged
+    %       imag_signal:        IMAGINARY coefficients, vector-averaged
+    %       amp_signal:         AMPLITUDES, vector-averaged
+    %       phase_signal:       PHASES, vector-averaged
+    %       z_snr:              Z_SNR
+    %       amp_noise:          NOISE BAND AMPLITUDES, vector-averaged
+    %   all subfields are bin-by-harmonic-by-component-by-condition arrays
     %
-    %   realBins: bin-by-harmonic-by-component array of REAL RC coefficients
-    %   imagBins: bin-by-harmonic-by-component array of IMAGINARY RC coefficients
-    %   ampBins: bin-by-harmonic-by-component array of RC amplitudes
-    %   phaseBins: bin-by-harmonic-by-component array of RC phases
+    %   "subjects", with the following subfields
+    %       amp_signal:         AMPLITUDES
+    %       proj_amp_signal:    PROJECTED AMPLITUDES 
+    %       amp_noise:          NOISE BAND AMPLITUDES
+    %       z_snr:              Z_SNR
+    %   all subfields are bin-by-harmonic-by-component-by-subject-by-condition arrays
     %
+    % "stats", with the following subfields
+    %      amp_err_up: upper error bars
     %
-    % if keepConditions is true (default = false), condition number adds a 4th
-    %   dimension to each array.
-    % if ampErrorType is specified, then an additional field is returned:
+    %      amp_err_lo: lower error bars
     %
-    % ampErrBins: bin-by-harmonic-by-component array of RC amplitude errors
-    %      as estimated by specified ampErrorType: 'SEM' '95CI' or a string specifying
-    %      a different percentage CI formated following: '%.1fCI'. Default is
-    %      'SEM' (uses function getErrorEllipse.m).
+    %      t_sig:      significance (true/false) for student's t-test against zero
+    %                  run on projected amplitudes across subjects
+    %           
+    %      t_p:        p-values for student's t-test against zero
+    %
+    %      t_val:      t-values for student's t-test against zero
+    %
+    %      t2_sig:     significance (true/false) for Hotelling's T2 against zero
+    %                  run on real and imag coefficients across subjects
+    %           
+    %      t2_p:       p-values for Hotelling's T2 against zero
+    %
+    %      t2_val:     t-values for Hotelling's T2 against zero
+    %
+    %      ... all of the above are
+    %          bin-by-harmonic-by-component-by-condition arrays
+    %
+    %       err_type: string, what type of error bar was computed
+    %
+    %       naka_rushton: struct of naka-rushton outputs, pretty
+    %              self-explanatory
     
-    % nrFit: freq x rc x condition logical, indicating whether or not to do Naka-Rushton fitting
-
-    %% 
-    if nargin<2, keepConditions=false; end
-    if (nargin<3 || isempty(ampErrorType)), ampErrorType = 'none'; else end
-    if (nargin<4 || isempty(trialError)), trialError = false; else end
-    if (nargin<5 ), nrFit=[]; else end
-    
-    rcaSettings = rcaStruct.settings;
-    % add comparison data as last component
-    if isfield(rcaStruct,'comparisonData')
-        rcaData = cellfun(@(x,y) cat(2,x,y), rcaStruct.data,rcaStruct.comparisonData,'uni',false);
+    if nargin<2
+        keep_conditions=true; 
+    end
+    if ( nargin<3 ) || isempty(error_type)
+        error_type = 'SEM'; 
     else
-        rcaData = rcaStruct.data;
+    end
+    if ( nargin<4 ) || isempty(trial_wise)
+        trial_wise = false;
+    else
+    end
+    if nargin<5
+        do_nr=[]; 
+    else
+    end
+    
+    rcaSettings = rca_struct.settings;
+    % add comparison data as last component
+    if isfield(rca_struct,'comparisonData')
+        rcaData = cellfun(@(x,y) cat(2,x,y), rca_struct.data,rca_struct.comparisonData,'uni',false);
+    else
+        rcaData = rca_struct.data;
     end
    
     nSubjects = size(rcaData,2);
 
-    if ~keepConditions
+    if ~keep_conditions
         % concatenate conditions, but keep everything else seperate
         rcaData = arrayfun(@(x) cat(3,rcaData{:,x}),1:nSubjects,'uni',false);
     else
@@ -60,28 +117,34 @@ function [avgData,muRcaDataRealAllSubj,muRcaDataImagAllSubj] = aggregateData(rca
     else
     end
 
+    if nBins > 1
+        % the average will be computed and added to the bin  
+        nBins = nBins + 1;
+    else
+    end
+    
     % do the noise
     % add comparison data, and compute the amplitudes, which is all you need
-    if isfield(rcaStruct,'noiseData')
-        ampNoiseBins = zeros(nBins+1,nFreqs,nCompFromInputData,nConditions);
-        if trialError
-            ampNoiseBinsSubjects = zeros(nBins+1,nFreqs,nCompFromInputData,nSubjects*nTrials,nConditions);
+    if isfield(rca_struct,'noiseData')
+        ampNoiseBins = zeros(nBins,nFreqs,nCompFromInputData,nConditions);
+        if trial_wise
+            ampNoiseBinsSubjects = zeros(nBins,nFreqs,nCompFromInputData,nSubjects*nTrials,nConditions);
         else
-            ampNoiseBinsSubjects = zeros(nBins+1,nFreqs,nCompFromInputData,nSubjects,nConditions);
+            ampNoiseBinsSubjects = zeros(nBins,nFreqs,nCompFromInputData,nSubjects,nConditions);
         end
         for z = 1:2
             if z == 1
                 % lower
-                noiseStruct.data = rcaStruct.noiseData.lowerSideBand;
-                noiseStruct.comparisonData = rcaStruct.comparisonNoiseData.lowerSideBand;
+                noiseStruct.data = rca_struct.noiseData.lowerSideBand;
+                noiseStruct.comparisonData = rca_struct.comparisonNoiseData.lowerSideBand;
             else
-                noiseStruct.data = rcaStruct.noiseData.higherSideBand;
-                noiseStruct.comparisonData = rcaStruct.comparisonNoiseData.higherSideBand;
+                noiseStruct.data = rca_struct.noiseData.higherSideBand;
+                noiseStruct.comparisonData = rca_struct.comparisonNoiseData.higherSideBand;
             end
             noiseStruct.settings = rcaSettings;
-            noiseStruct.Out = aggregateData(noiseStruct,keepConditions,'none',trialError,[]); % do not compute NR or error
-            ampNoiseBins = noiseStruct.Out.ampBins + ampNoiseBins;
-            ampNoiseBinsSubjects = noiseStruct.Out.subjectAmp + ampNoiseBinsSubjects;
+            noiseStruct.Out = aggregateData(noiseStruct, keep_conditions, 'none', []); % do not compute NR or error
+            ampNoiseBins = noiseStruct.Out.mean.amp_signal + ampNoiseBins;
+            ampNoiseBinsSubjects = noiseStruct.Out.subjects.amp_signal + ampNoiseBinsSubjects;
             clear noiseStruct;
         end
         ampNoiseBins = ampNoiseBins./2;
@@ -94,7 +157,7 @@ function [avgData,muRcaDataRealAllSubj,muRcaDataImagAllSubj] = aggregateData(rca
     % convert to real/imaginary
     [rcaDataReal,rcaDataImag] = getRealImag(rcaData);
 
-    if ~strcmp(ampErrorType,'none')        
+    if ~strcmp(error_type,'none')        
         ampErrBins = nan(nBins,nFreqs,nCompFromInputData,nConditions,2);
         tPval = nan(nBins,nFreqs,nCompFromInputData,nConditions);
         tSqrd = nan(nBins,nFreqs,nCompFromInputData,nConditions);
@@ -102,8 +165,8 @@ function [avgData,muRcaDataRealAllSubj,muRcaDataImagAllSubj] = aggregateData(rca
     end
     
     % nBins + 1, room for average
-    muRcaDataReal = nan(nBins+1,nFreqs,nCompFromInputData,nConditions);
-    muRcaDataImag = nan(nBins+1,nFreqs,nCompFromInputData,nConditions);
+    muRcaDataReal = nan(nBins,nFreqs,nCompFromInputData,nConditions);
+    muRcaDataImag = nan(nBins,nFreqs,nCompFromInputData,nConditions);
     
     NR_Params = nan(5,nFreqs,nCompFromInputData,nConditions);
     NR_R2 = nan(1,nFreqs,nCompFromInputData,nConditions);
@@ -112,9 +175,9 @@ function [avgData,muRcaDataRealAllSubj,muRcaDataImagAllSubj] = aggregateData(rca
     NR_JK_SE = nan(5,nFreqs,nCompFromInputData,nConditions);
     NR_JK_Params = nan(5,nSubjects,nFreqs,nCompFromInputData,nConditions);
     
-    % assign default value to nrFit
-    if isempty(nrFit)
-        nrFit = false(nFreqs,nCompFromInputData,nConditions);
+    % assign default value to do_nr
+    if isempty(do_nr)
+        do_nr = false(nFreqs,nCompFromInputData,nConditions);
     else
     end
     
@@ -123,13 +186,13 @@ function [avgData,muRcaDataRealAllSubj,muRcaDataImagAllSubj] = aggregateData(rca
         tempImag = [];
         tempZ = [];
         for s=1:nSubjects
-            if trialError
-                nanSet = nan(nBins+1,nFreqs,nCompFromInputData,nSubjects*nTrials);
+            if trial_wise
+                nanSet = nan(nBins,nFreqs,nCompFromInputData,nSubjects*nTrials);
                 % grab all subjects' data, without averaging over trials: 
                 tempReal = cat(3,tempReal,rcaDataReal{condNum,s});
                 tempImag = cat(3,tempImag,rcaDataImag{condNum,s});
             else
-                nanSet = nan(nBins+1,nFreqs,nCompFromInputData,nSubjects);
+                nanSet = nan(nBins,nFreqs,nCompFromInputData,nSubjects);
                 % grab all subjects' data, averaging over trials: 
                 tempReal = cat(3,tempReal,nanmean(rcaDataReal{condNum,s},3));
                 tempImag = cat(3,tempImag,nanmean(rcaDataImag{condNum,s},3));
@@ -143,12 +206,12 @@ function [avgData,muRcaDataRealAllSubj,muRcaDataImagAllSubj] = aggregateData(rca
         binLabels = cell2mat(cellfun(@(x) str2num(x), rcaSettings.binLabels,'uni',false));
         for rc = 1:nCompFromInputData
             for f = 1:nFreqs
-                for b = 1:(nBins+1)
-                    if b == nBins+1
+                for b = 1:nBins
+                    if b == nBins && b > 1
                         % get the vector average over bins
-                        muRcaDataRealAllSubj(b,f,rc,1:size(tempReal(curIdx,rc,:),3),condNum) = nanmean(muRcaDataRealAllSubj(1:nBins,f,rc,1:size(tempReal(curIdx,rc,:),3),condNum),1);
-                        muRcaDataImagAllSubj(b,f,rc,1:size(tempImag(curIdx,rc,:),3),condNum) = nanmean(muRcaDataImagAllSubj(1:nBins,f,rc,1:size(tempReal(curIdx,rc,:),3),condNum),1);
-                        zRcaDataAllSubj(b,f,rc,1:size(tempZ(curIdx,rc,:),3),condNum) = nanmean(zRcaDataAllSubj(1:nBins,f,rc,1:size(tempZ(curIdx,rc,:),3),condNum));
+                        muRcaDataRealAllSubj(b,f,rc,1:size(tempReal(curIdx,rc,:),3),condNum) = nanmean(muRcaDataRealAllSubj(1:(nBins-1),f,rc,1:size(tempReal(curIdx,rc,:),3),condNum),1);
+                        muRcaDataImagAllSubj(b,f,rc,1:size(tempImag(curIdx,rc,:),3),condNum) = nanmean(muRcaDataImagAllSubj(1:(nBins-1),f,rc,1:size(tempReal(curIdx,rc,:),3),condNum),1);
+                        zRcaDataAllSubj(b,f,rc,1:size(tempZ(curIdx,rc,:),3),condNum) = nanmean(zRcaDataAllSubj(1:(nBins-1),f,rc,1:size(tempZ(curIdx,rc,:),3),condNum));
                     else
                         curIdx = find(rcaSettings.freqIndices==dataFreqs(f) & rcaSettings.binIndices==dataBins(b));
                         muRcaDataRealAllSubj(b,f,rc,1:size(tempReal(curIdx,rc,:),3),condNum) = tempReal(curIdx,rc,:);
@@ -170,7 +233,7 @@ function [avgData,muRcaDataRealAllSubj,muRcaDataImagAllSubj] = aggregateData(rca
         projectAmpAllSubj(:,:,:,:,condNum) = permute(tempProject,[2,3,4,1]);
     end
     % fit Naka Rushton on means for all conditions
-    if any(nrFit(:))
+    if any(do_nr(:))
         % don't include average in fits
         fitData = sqrt(muRcaDataReal.^2+muRcaDataImag.^2);
         fitNoise = repmat(nanmean(ampNoiseBins,4),[1,1,1,nConditions]); % use same noise across conditions
@@ -183,21 +246,20 @@ function [avgData,muRcaDataRealAllSubj,muRcaDataImagAllSubj] = aggregateData(rca
     else
     end
     
-    if ~strcmp(ampErrorType,'none')  
+    if ~strcmp(error_type,'none')  
         for condNum = 1:nConditions
             for rc=1:nCompFromInputData
                 for f=1:nFreqs
                     % do include averages when computing error bars
-                    testReal = squeeze(muRcaDataRealAllSubj(:,f,rc,:,condNum));
-                    testImag = squeeze(muRcaDataImagAllSubj(:,f,rc,:,condNum));
-                    testNoise = squeeze(nanmean(ampNoiseBinsSubjects(:,f,rc,:,:),5));
-                    for b=1:nBins+1
+                    testReal = reshape(muRcaDataRealAllSubj(:,f,rc,:,condNum), [], nSubjects);
+                    testImag = reshape(muRcaDataImagAllSubj(:,f,rc,:,condNum), [], nSubjects);
+                    for b=1:nBins
                         xyData = [testReal(b,:)' testImag(b,:)'];
                         if size(xyData,1)<2
                             keyboard;
                         end
                         nanVals = sum(isnan(xyData),2)>0;                        
-                        ampErrBins(b,f,rc,condNum,:) = fitErrorEllipse(xyData(~nanVals,:),ampErrorType);
+                        ampErrBins(b,f,rc,condNum,:) = fitErrorEllipse(xyData(~nanVals,:),error_type);
                         % compute t2-statistic against zero
                         tStruct = tSquaredFourierCoefs(xyData(~nanVals,:));
                         tPval(b,f,rc,condNum) = tStruct.pVal;
@@ -205,10 +267,10 @@ function [avgData,muRcaDataRealAllSubj,muRcaDataImagAllSubj] = aggregateData(rca
                         tSig(b,f,rc,condNum) = tStruct.H;
                     end
                     % do not include averages when computing fitting errors
-                    testReal = squeeze(muRcaDataRealAllSubj(1:nBins,f,rc,:,condNum));
-                    testImag = squeeze(muRcaDataImagAllSubj(1:nBins,f,rc,:,condNum));
-                    testNoise = squeeze(nanmean(ampNoiseBinsSubjects(1:nBins,f,rc,:,:),5));
-                    if nrFit(f,rc,condNum)
+                    testReal = squeeze(muRcaDataRealAllSubj(1:(nBins-1),f,rc,:,condNum));
+                    testImag = squeeze(muRcaDataImagAllSubj(1:(nBins-1),f,rc,:,condNum));
+                    testNoise = nanmean(reshape(ampNoiseBinsSubjects(1:(nBins-1),f,rc,:,:),[],nSubjects, nConditions),3);
+                    if do_nr(f,rc,condNum)
                         for s = 1:size(testReal,2) % number of subjects, or subject x trials
                             sIdx = true(size(testReal,2),1);
                             sIdx(s) = false;
@@ -228,33 +290,49 @@ function [avgData,muRcaDataRealAllSubj,muRcaDataImagAllSubj] = aggregateData(rca
         end
     else
     end
-
-    avgData.realBins = muRcaDataReal;
-    avgData.imagBins = muRcaDataImag;
-    avgData.ampBins = sqrt(muRcaDataReal.^2+muRcaDataImag.^2);
-    avgData.ampNoiseBins = ampNoiseBins;
-    avgData.phaseBins = atan(muRcaDataImag./muRcaDataReal);
-    avgData.zSNR.mean = zRcaData;
-    avgData.zSNR.subj = zRcaDataAllSubj;
-    avgData.subjectAmp = sqrt(muRcaDataRealAllSubj.^2+muRcaDataImagAllSubj.^2);
-    avgData.subjectAmpNoise = ampNoiseBinsSubjects;
-    avgData.subjectAmp_projected = projectAmpAllSubj;
+    
+    % 
+    mean_data.real_signal = muRcaDataReal;
+    mean_data.imag_signal = muRcaDataImag;
+    mean_data.amp_signal = sqrt(muRcaDataReal.^2+muRcaDataImag.^2);
+    mean_data.phase_signal = atan(muRcaDataImag./muRcaDataReal);
+    mean_data.amp_noise = ampNoiseBins;
+    mean_data.z_snr = zRcaData;
+    rca_struct.mean = mean_data;
+ 
+    sub_data.amp_signal = sqrt(muRcaDataRealAllSubj.^2+muRcaDataImagAllSubj.^2);
+    sub_data.amp_noise = ampNoiseBinsSubjects;
+    sub_data.proj_amp_signal = projectAmpAllSubj;
+    sub_data.z_snr = zRcaDataAllSubj;
+    rca_struct.subjects = sub_data;
     
     % Naka-Rushton output
-    avgData.NakaRushton.Params = NR_Params;
-    avgData.NakaRushton.R2 = NR_R2;
-    %avgData.NakaRushton.Range = NR_Range;
-    avgData.NakaRushton.hModel = NR_hModel;
+    stat_data.naka_rushton.Params = NR_Params;
+    stat_data.naka_rushton.R2 = NR_R2;
+    stat_data.naka_rushton.hModel = NR_hModel;
     
-    if ~strcmp(ampErrorType,'none') 
-        avgData.ampErrBins = ampErrBins;
-        avgData.ampErrType = ampErrorType;
-        avgData.tSqrdSig = tSig;
-        avgData.tSqrdP = tPval;
-        avgData.tSqrdVal = tSqrd;
-        avgData.NakaRushton.JackKnife.SE = NR_JK_SE;
-        avgData.NakaRushton.JackKnife.Params = NR_JK_Params;
+    if ~strcmp(error_type,'none') 
+        % error bins
+        stat_data.amp_lo_err = ampErrBins(:,:,:,:,1);
+        stat_data.amp_up_err = ampErrBins(:,:,:,:,2);
+        stat_data.err_type = error_type;
+        % regular old t-test on projected amplitudes
+        % one-tailed, would never be below zero
+        t_params = {'alpha',0.05,'dim',4,'tail','right'};
+        [stat_data.t_sig, stat_data.t_p, ci, sts] = ttest(rca_struct.subjects.proj_amp_signal,0,t_params{:});
+        stat_data.t_sig = reshape(stat_data.t_sig, nBins, nFreqs, nCompFromInputData, []);
+        stat_data.t_p = reshape(stat_data.t_p, nBins, nFreqs, nCompFromInputData, []);   
+        stat_data.t_val = reshape(sts.tstat, nBins, nFreqs, nCompFromInputData, []);
+        % Hotelling's T2
+        stat_data.t2_sig = tSig;
+        stat_data.t2_p = tPval;
+        stat_data.t2_val = tSqrd;
+        % Naka-Rushton
+        stat_data.naka_rushton.JackKnife.SE = NR_JK_SE;
+        stat_data.naka_rushton.JackKnife.Params = NR_JK_Params;
     end
+    rca_struct.stats = stat_data;
+    
 end
 
 function outZ = computeZsnr(realVals,imagVals)
