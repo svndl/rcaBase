@@ -292,8 +292,6 @@ function rca_struct = aggregateData(rca_struct, keep_conditions, error_type, tri
     end
     
     % 
-    mean_data.real_signal = muRcaDataReal;
-    mean_data.imag_signal = muRcaDataImag;
     mean_data.amp_signal = sqrt(muRcaDataReal.^2+muRcaDataImag.^2);
     mean_data.phase_signal = atan(muRcaDataImag./muRcaDataReal);
     mean_data.amp_noise = ampNoiseBins;
@@ -301,6 +299,8 @@ function rca_struct = aggregateData(rca_struct, keep_conditions, error_type, tri
     rca_struct.mean = mean_data;
  
     sub_data.amp_signal = sqrt(muRcaDataRealAllSubj.^2+muRcaDataImagAllSubj.^2);
+    sub_data.real_signal = muRcaDataRealAllSubj;
+    sub_data.imag_signal = muRcaDataImagAllSubj;
     sub_data.amp_noise = ampNoiseBinsSubjects;
     sub_data.proj_amp_signal = projectAmpAllSubj;
     sub_data.z_snr = zRcaDataAllSubj;
