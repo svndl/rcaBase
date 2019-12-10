@@ -1,4 +1,4 @@
-function rca_struct = rcaSweep(pathnames,binsToUse,freqsToUse,condsToUse,trialsToUse,nReg,nComp,dataType,chanToCompare,show,rcPlotStyle,forceSourceData)
+function rca_struct = rcaSweep(pathnames,binsToUse,freqsToUse,condsToUse,trialsToUse,nReg,nComp,dataType,chanToCompare,forceReload)
 % perform RCA on sweep SSVEP data exported to RLS or DFT format
 %
 % [rcaData,W,A,noiseData,compareData,compareNoiseData,freqIndices,binIndices]=RCASWEEP(PATHNAMES,[BINSTOUSE],[FREQSTOUSE],[CONDSTOUSE],[TRIALSTOUSE],[NREG],[NCOMP],[DATATYPE],[COMPARECHAN],[SHOW],[RCPLOTSTYLE])
@@ -15,8 +15,9 @@ function rca_struct = rcaSweep(pathnames,binsToUse,freqsToUse,condsToUse,trialsT
 % dataType: can be 'DFT' or 'RLS'
 % compareChan: comparison channel index between 1 and the total number
 %   of channels in the specified dataset
-% show: 1 to see a figure of sweep amplitudes for each harmonic and component (defaults to 1), 0 to not display
-% rcPlotStyle: see 'help rcaRun', can be: 'matchMaxSignsToRc1' (default) or 'orig'
+% forceReload: true/[false], if true, reload the data text files and generate
+%              new .mat files for quick loading of the data
+%              set to true if you have re-exported the data
 %
 % OUTPUTS:
 % rcaData: returned by rcaRun
@@ -36,10 +37,8 @@ function rca_struct = rcaSweep(pathnames,binsToUse,freqsToUse,condsToUse,trialsT
 % Jacek P. Dmochowski, 2015, report bugs to dmochowski@gmail.com
 % Edited by HEG 07/2015
 
-if nargin<12 || isempty(forceSourceData), forceSourceData = false; end
-if nargin<11 || isempty(rcPlotStyle), rcPlotStyle = []; end
-if nargin<10 || isempty(show), show=1; end
-if nargin<9 || isempty(chanToCompare), 
+if nargin<10 || isempty(forceReload), forceReload = false; end
+if nargin<9 || isempty(chanToCompare)
     computeComparison=false; 
     chanToCompare=NaN;
 elseif ~isempty(chanToCompare)
@@ -79,7 +78,7 @@ s = 1;
 assigned = false(1,length(condsToUse));
 while (s <= nSubjects)
     sourceDataFileName = sprintf('%s/sourceData_%s.mat',pathnames{s},dataType);
-    if isempty(dir(sourceDataFileName)) || forceSourceData
+    if isempty(dir(sourceDataFileName)) || forceReload
         createSourceDataMat(pathnames{s});
     end
     [signalData,noise1,noise2,subFreqIdx{s},subBinIdx{s},subFreqLabels{s},subBinLabels{s}] = selectDataForTraining(sourceDataFileName,binsToUse,freqsToUse,condsToUse,trialsToUse);
@@ -141,7 +140,7 @@ end
 %% run RCA
 fprintf('Running RCA...\n');
 warning('off','all')
-[rcaData,W,A,Rxx,Ryy,Rxy,dGen]=rcaRun(sensorData,nReg,nComp,[],[],show,rcPlotStyle); 
+[rcaData,W,A,Rxx,Ryy,Rxy,dGen]=rcaRun(sensorData,nReg,nComp); 
 covData.Rxx = Rxx;
 covData.Ryy = Ryy;
 covData.Rxy = Rxy;
