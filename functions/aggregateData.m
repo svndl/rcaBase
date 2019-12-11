@@ -117,11 +117,11 @@ function rca_struct = aggregateData(rca_struct, keep_conditions, error_type, tri
     else
     end
 
-    if nBins > 1
-        % the average will be computed and added to the bin  
-        nBins = nBins + 1;
-    else
-    end
+    %if nBins > 1
+    %    % the average will be computed and added to the bin  
+    %    nBins = nBins + 1;
+    %else
+    %end
     
     % do the noise
     % add comparison data, and compute the amplitudes, which is all you need
@@ -207,17 +207,17 @@ function rca_struct = aggregateData(rca_struct, keep_conditions, error_type, tri
         for rc = 1:nCompFromInputData
             for f = 1:nFreqs
                 for b = 1:nBins
-                    if b == nBins && b > 1
+                    %if b == nBins && b > 1
                         % get the vector average over bins
-                        muRcaDataRealAllSubj(b,f,rc,1:size(tempReal(curIdx,rc,:),3),condNum) = nanmean(muRcaDataRealAllSubj(1:(nBins-1),f,rc,1:size(tempReal(curIdx,rc,:),3),condNum),1);
-                        muRcaDataImagAllSubj(b,f,rc,1:size(tempImag(curIdx,rc,:),3),condNum) = nanmean(muRcaDataImagAllSubj(1:(nBins-1),f,rc,1:size(tempReal(curIdx,rc,:),3),condNum),1);
-                        zRcaDataAllSubj(b,f,rc,1:size(tempZ(curIdx,rc,:),3),condNum) = nanmean(zRcaDataAllSubj(1:(nBins-1),f,rc,1:size(tempZ(curIdx,rc,:),3),condNum));
-                    else
+                        %muRcaDataRealAllSubj(b,f,rc,1:size(tempReal(curIdx,rc,:),3),condNum) = nanmean(muRcaDataRealAllSubj(1:(nBins-1),f,rc,1:size(tempReal(curIdx,rc,:),3),condNum),1);
+                        %muRcaDataImagAllSubj(b,f,rc,1:size(tempImag(curIdx,rc,:),3),condNum) = nanmean(muRcaDataImagAllSubj(1:(nBins-1),f,rc,1:size(tempReal(curIdx,rc,:),3),condNum),1);
+                        %zRcaDataAllSubj(b,f,rc,1:size(tempZ(curIdx,rc,:),3),condNum) = nanmean(zRcaDataAllSubj(1:(nBins-1),f,rc,1:size(tempZ(curIdx,rc,:),3),condNum));
+                    %else
                         curIdx = find(rcaSettings.freqIndices==dataFreqs(f) & rcaSettings.binIndices==dataBins(b));
                         muRcaDataRealAllSubj(b,f,rc,1:size(tempReal(curIdx,rc,:),3),condNum) = tempReal(curIdx,rc,:);
                         muRcaDataImagAllSubj(b,f,rc,1:size(tempImag(curIdx,rc,:),3),condNum) = tempImag(curIdx,rc,:);
                         zRcaDataAllSubj(b,f,rc,1:size(tempZ(curIdx,rc,:),3),condNum) = tempZ(curIdx,rc,:);
-                    end
+                    %end
                 end
             end
         end

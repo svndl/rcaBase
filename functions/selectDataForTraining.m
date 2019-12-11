@@ -11,10 +11,10 @@ function [signalDataSel,noise1Sel,noise2Sel,indFSel,indBSel,freqLabelsSel,binLab
     else
     end
     
-    if nargin < 4 || isempty(condsToUse);
+    if nargin < 4 || isempty(condsToUse)
         condsToUse = 1:size(signalData,1); 
     else
-    end;
+    end
     
     if nargin < 3 
         freqsToUse = [];
@@ -51,7 +51,7 @@ function [signalDataSel,noise1Sel,noise2Sel,indFSel,indBSel,freqLabelsSel,binLab
                 % use all available bins
                 % (note: canmot differ across conditions)
                 binsToUse = unique(indB{condsToUse(c)});
-                binsToUse = binsToUse(binsToUse>0); % use all bins except the average bin
+                %binsToUse = binsToUse(binsToUse>0); % use all bins except the average bin
             else
             end
             if isempty(freqsToUse)
