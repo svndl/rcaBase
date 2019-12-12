@@ -1,55 +1,72 @@
-function rca_struct = rcaSweep(path_names, rca_bins, rca_freqs, rca_conds, rca_trials, rca_subs, nReg, nComp, dataType, chanToCompare, forceReload)
+function rca_struct = rcaSweep(path_names, rca_bins, rca_harms, rca_conds, rca_trials, rca_subs, n_reg, n_comp, data_type, compare_ch, force_reload)
 % perform RCA on sweep SSVEP data exported to RLS or DFT format
 %
-% [rcaData,W,A,noiseData,compareData,compareNoiseData,freqIndices,binIndices]=RCASWEEP(path_names,[rca_bins],[rca_freqs],[rca_conds],[rca_trials],[NREG],[NCOMP],[DATATYPE],[COMPARECHAN],[SHOW],[RCPLOTSTYLE])
+% rca_struct = rcaSweep(path_names, [rca_bins, rca_harms, rca_conds, rca_trials, rca_subs, n_reg, n_comp, data_type, compare_ch, force_reload])
 %
 % INPUTS:
-% path_names:   cell vector of string directory names housed in DFT_c00x.txt or RLS_c00x.txt exports
-%                   for example, path_names={'/Volumes/Denali_4D2/rca/s001/','/Volumes/Denali_4D2/rca/s002/','/Volumes/Denali_4D2/rca/s003/'}
-% rca_bins:    vector of bin indices indices to to use for rca training
-%                   [ defaults to bin 0 or average across bins ] 
-% rca_freqs:   vector of frequency indices to to use for rca training
-%                   [ defaults to all available harmonics ] 
-% rca_conds:   vector of conditions to use for rca training
-% rca_trials:  vector of indices of trials to use for rca training
-% rca_subs:    vector of subjects to use for rca training
-% nReg:        RCA regularization parameter (defaults to 9)
-% nComp:       number of RCs to retain (defaults to 3)
-% dataType:    can be 'DFT' or 'RLS'
-% compareChan: comparison channel index between 1 and the total number
-%              of channels in the specified dataset [75]
-% forceReload: true/[false], if true, reload the data text files and generate
-%              new .mat files for quick loading of the data
-%              set to true if you have re-exported the data
+%   path_names: cell vector of string directory names housed in DFT_c00x.txt or RLS_c00x.txt exports
+%                   for example, path_names={'/Volumes/Denali_DATA1/rca/s001/','/Volumes/Denali_DATA1/rca/s002/','/Volumes/Denali_DATA1/rca/s003/'}
+%   rca_bins:   vector of indices of bins to use for rca training
+%                   [ defaults to 0 which is the average across bins ] 
+%   rca_harms:  vector of indices of harmonics to use for rca training
+%                   [ defaults to all harmonics in the data set ] 
+%   rca_conds:  vector of conditions to use for rca training
+%                   [ defaults to all conditions in the data set ] 
+%   rca_trials: vector of indices of trials to use for rca training
+%                   [ defaults to all trials in the data set ]
+%   rca_subs:   vector of subjects to use for rca training
+%                   [ defaults to all subjects in the data set ]
+%   n_reg:      RCA regularization parameter [9]
 %
-% OUTPUTS:
-% rcaData: returned by rcaRun
-% W: linear transformation matrix to go from sensor space to RC-space
-% A: linear transformation matrix to go from RC-space space to sensor space
-% covData: the covariance data used to learn the RCs
-% noiseData: struct containing fields for the rca space representation of frequency side bands
-% compareData: rcaData for the comparison channel only (if supplied)
-% compareNoiseData: noiseData for the comparison channel only (if supplied)
-% rcaSettings: struct containing settings used to run RCA & indices
-%              necessary for unpacking rcaData later on
+%   n_comp:     number of RCs to retain [3]
 %
-% rcaData is a (NumberConditions x NumberSubjects) cell array. Each cell
-% contains a (length(rca_freqs)*length(rca_bins)*2 x nComp x NumberTrialsPerSubject)
-% matrix containing the real and imaginary components of each RC.
+%   data_type:  can be 'DFT' or ['RLS']
 %
-% Jacek P. Dmochowski, 2015, report bugs to dmochowski@gmail.com
-% Edited by HEG 07/2015
+%   compare_ch: comparison channel index between 1 and the total number
+%                   of channels in the specified dataset [75]
+%   force_reload: true/[false], if true, reload the data text files and generate
+%                   new .mat files for quick loading of the data
+%                   set to true if you have re-exported the data
+%
+% OUTPUTS: 
+%   rca_struct: length(rca_harms) x 1 array of structs, one for each harmonic, 
+%   with the following subfields:
+%   - rca_data: a conditions x subjects cell array. Each cell contains a 
+%           (n_bins+1)*2 x n_comp+1 x trials matrix
+%           containing the real and imaginary components of each RC.
+%           The comparison data is added at the n_comp+1 position in the matrix
+%           (note: this is all the data in the dataset, not just the data used for RCA)
+%
+%   - noiseLower and noiseHigher:
+%           two fields containing matrices same shape as data, 
+%           with the "noise" in the lower and higher frequency side bands 
+%           passed through the components and comparison channel
+%
+%   - input_data: the input data 
+%           (note: this is all the data in the dataset, not just the data used for RCA)
+%
+%   - W: linear transformation matrix to go from sensor space to RC-space
+%
+%   - A: linear transformation matrix to go from RC-space space to sensor space
+%
+%   - COV: the covariance data used to learn the RCs
+%
+%   - settings: struct containing settings used to run RCA and
+%              indices necessary for unpacking data later on
+%
+% created by JP Dmochowski and H Gerhard
+% updated and maintained by PJ Kohler [pjkohl3r@gmail.com]
 
-if nargin<11 || isempty(forceReload); forceReload = false; end
-if nargin<10 || isempty(chanToCompare); chanToCompare = 75; end
-if nargin<9 || isempty(dataType), dataType = 'RLS'; end
-if nargin<8 || isempty(nComp), nComp=3; end
-if nargin<7 || isempty(nReg), nReg=9; end
+if nargin<11 || isempty(force_reload); force_reload = false; end
+if nargin<10 || isempty(compare_ch); compare_ch = 75; end
+if nargin<9 || isempty(data_type), data_type = 'RLS'; end
+if nargin<8 || isempty(n_comp), n_comp=3; end
+if nargin<7 || isempty(n_reg), n_reg=9; end
 if nargin<6 || isempty(rca_subs), rca_subs = []; end
 if nargin<5 || isempty(rca_trials), rca_trials = []; end
-if nargin<4 || isempty(rca_conds), rca_conds=[]; end
-if nargin<3 || isempty(rca_freqs), rca_freqs=[]; end
-if nargin<2 || isempty(rca_bins), rca_bins=[]; end
+if nargin<4 || isempty(rca_conds), rca_conds = []; end
+if nargin<3 || isempty(rca_harms), rca_harms = []; end
+if nargin<2 || isempty(rca_bins), rca_bins = 0; end
 if nargin<1, error('Must specify at least one input argument'); end
 
 %% if pathanmes is a string, convert to cell
@@ -77,15 +94,15 @@ fprintf('Reading in sensor data from provided path names...\n')
 s = 1;
 assigned = false(1,length(rca_conds));
 while (s <= nSubjects)
-    sourceDataFileName = sprintf('%s/sourceData_%s.mat',path_names{s},dataType);
-    if isempty(dir(sourceDataFileName)) || forceReload
+    sourceDataFileName = sprintf('%s/sourceData_%s.mat',path_names{s},data_type);
+    if isempty(dir(sourceDataFileName)) || force_reload
         createSourceDataMat(path_names{s});
     end
     [signalData,noise1,noise2,subFreqIdx{s},subBinIdx{s},subFreqLabels{s},subBinLabels{s}] = selectDataForTraining(sourceDataFileName);
     all_data(:,s)=signalData;
     cellNoiseData1(:,s)=noise1;
     cellNoiseData2(:,s)=noise2;
-    train_data(:,s) = selectDataForTraining(sourceDataFileName,rca_bins,rca_freqs,rca_conds,rca_trials);
+    train_data(:,s) = selectDataForTraining(sourceDataFileName,rca_bins,rca_harms,rca_conds,rca_trials);
     
     for c = 1:length(rca_conds)
         if ~any(isnan(subFreqIdx{s}{c}))
@@ -131,8 +148,8 @@ else
 end
 nChannels = size(all_data{1,1},2);
 
-if chanToCompare > nChannels
-    error_msg = sprintf('\n The requested comparision channel (%d) exceeds the maximum number of channels in the dataset (%d), ignoring request...\n', chanToCompare, nChannels);
+if compare_ch > nChannels
+    error_msg = sprintf('\n The requested comparision channel (%d) exceeds the maximum number of channels in the dataset (%d), ignoring request...\n', compare_ch, nChannels);
     error(error_msg);
 else
 end
@@ -178,8 +195,8 @@ if isempty(rca_bins)
     rca_bins = 'all';
 else
 end
-if isempty(rca_freqs)
-    rca_freqs = 'all';
+if isempty(rca_harms)
+    rca_harms = 'all';
 else
 end
 
@@ -199,37 +216,38 @@ end
 %% run RCA
 fprintf('Running RCA...\n');
 warning('off','all')
-[~, W, A, Rxx, Ryy, Rxy, dGen] = rcaRun(train_data, nReg, nComp); 
-covData.Rxx = Rxx; 
-covData.Ryy = Ryy;
-covData.Rxy = Rxy;
-covData.sortedGeneralizedEigenValues = dGen;
+[~, W, A, Rxx, Ryy, Rxy, dGen] = rcaRun(train_data, n_reg, n_comp); 
+COV.Rxx = Rxx; 
+COV.Ryy = Ryy;
+COV.Rxy = Rxy;
+COV.sortedGeneralizedEigenValues = dGen;
 % rca was trained on 'train_data', 
 % but now project all the data through those components
 rcaData = rcaProject(all_data, W);
-noiseData.lowerSideBand=rcaProject(cellNoiseData1, W); 
-noiseData.higherSideBand=rcaProject(cellNoiseData2, W);
+lo_noise = rcaProject(cellNoiseData1, W); 
+hi_noise = rcaProject(cellNoiseData2, W);
 
 %% CREATE A COMPONENT OF JUST ONE CHANNEL, FOR PERFORMANCE EVALUATION
-wComparison=zeros(nChannels,1); wComparison(chanToCompare)=1; 
-comparisonData=rcaProject(all_data, wComparison); 
-comparisonNoiseData.lowerSideBand =rcaProject(cellNoiseData1,wComparison); 
-comparisonNoiseData.higherSideBand =rcaProject(cellNoiseData2,wComparison); 
+W_comp = zeros(nChannels,1); W_comp(compare_ch) = 1; 
+rcaData = cellfun(@(x, y) cat(2, x, y), rcaData, rcaProject(all_data, W_comp), 'uni', false);
+lo_noise = cellfun(@(x, y) cat(2, x, y), lo_noise, rcaProject(cellNoiseData1, W_comp), 'uni', false);
+hi_noise = cellfun(@(x, y) cat(2, x, y), hi_noise, rcaProject(cellNoiseData2, W_comp), 'uni', false);
+compLabels = [arrayfun(@(x) sprintf('rc%02d',x), 1:n_comp, 'uni', false), sprintf('channel%d', compare_ch)];
 warning('on','all')
 
 %% package some of the necessary variables for plotting/grouping data later on
 rcaSettings.rcaBins = rca_bins;
-rcaSettings.rcaFreqs = rca_freqs;
+rcaSettings.rcaFreqs = rca_harms;
 rcaSettings.rcaConds = rca_conds;
 rcaSettings.rcaTrials = rca_trials;
 rcaSettings.rcaSubs = rca_subs;
-rcaSettings.nReg = nReg;
-rcaSettings.nComp = nComp;
-rcaSettings.chanToCompare = chanToCompare;
+rcaSettings.n_reg = n_reg;
+rcaSettings.n_comp = n_comp;
 rcaSettings.dataFolders = path_names;
 rcaSettings.freqLabels = freqLabels; 
 rcaSettings.binLabels = binLabels;
-rcaSettings.dataType = dataType;
+rcaSettings.compLabels = compLabels;
+rcaSettings.data_type = data_type;
 runDate = datestr(clock,26);
 runDate(strfind(runDate,'/')) ='';
 rcaSettings.runDate = runDate; % on what date was this RCA run?
@@ -237,27 +255,24 @@ rcaSettings.runDate = runDate; % on what date was this RCA run?
 %% generate final output struct array, organized by frequency in input data
 
 %% THIS SECTION NEEDS TO BE MODERATED
-all_freqs = unique(freqIndices);
+% put shared values across frequencies into output struct
+% this includes empty fields "mean", "subjects", and "stats"
+% which will be used for aggregating data later (see aggregateData fxn)
+rca_struct = struct('W', W, 'A', A, 'COV', COV, ...
+    'mean', struct([]), 'subjects', struct([]), 'stats', struct([]));
 
+all_freqs = unique(freqIndices);
+% make an array of structs
+rca_struct = repmat(rca_struct, length(all_freqs), 1);
+% and populate it
 for f = 1:length(all_freqs)
-    rca_struct(f).W = W;
-    rca_struct(f).A = A;
-    rca_struct(f).covData = covData;
     fIdx = repmat(freqIndices==all_freqs(f),2,1); % repmat because the first half is real, second half is imag with same ordering
-    rca_struct(f).data = cellfun(@(x) x(fIdx,:,:),rcaData,'uni',false);
-    rca_struct(f).noiseData.lowerSideBand = cellfun(@(x) x(fIdx,:,:),noiseData.lowerSideBand,'uni',false);
-    rca_struct(f).noiseData.higherSideBand = cellfun(@(x) x(fIdx,:,:),noiseData.higherSideBand,'uni',false);
-    rca_struct(f).comparisonData = cellfun(@(x) x(fIdx,:,:),comparisonData,'uni',false);
-    rca_struct(f).comparisonNoiseData.lowerSideBand = cellfun(@(x) x(fIdx,:,:),comparisonNoiseData.lowerSideBand,'uni',false);
-    rca_struct(f).comparisonNoiseData.higherSideBand = cellfun(@(x) x(fIdx,:,:),comparisonNoiseData.higherSideBand,'uni',false);
-    rca_struct(f).inputData = cellfun(@(x) x(fIdx,:,:),all_data,'uni',false);
+    rca_struct(f).rca_data = cellfun(@(x) x(fIdx,:,:),rcaData,'uni',false);
+    rca_struct(f).noiseLower = cellfun(@(x) x(fIdx,:,:), lo_noise, 'uni',false);
+    rca_struct(f).noiseHigher = cellfun(@(x) x(fIdx,:,:), hi_noise, 'uni',false);
+    rca_struct(f).input_data = cellfun(@(x) x(fIdx,:,:),all_data,'uni',false);
     % output indices that match the data
     rcaSettings.freqIndices = freqIndices(freqIndices==all_freqs(f));
     rcaSettings.binIndices = binIndices(freqIndices==all_freqs(f));
-    % put into output struct
     rca_struct(f).settings = orderfields(rcaSettings);
-    % fields for putting aggregate data later (see aggregateData fxn)
-    rca_struct(f).mean = struct([]);
-    rca_struct(f).subjects = struct([]); 
-    rca_struct(f).stats = struct([]); 
 end

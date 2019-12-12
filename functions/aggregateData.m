@@ -87,12 +87,7 @@ function rca_struct = aggregateData(rca_struct, keep_conditions, error_type, tri
     end
     
     rcaSettings = rca_struct.settings;
-    % add comparison data as last component
-    if isfield(rca_struct,'comparisonData')
-        rcaData = cellfun(@(x,y) cat(2,x,y), rca_struct.data,rca_struct.comparisonData,'uni',false);
-    else
-        rcaData = rca_struct.data;
-    end
+    rcaData = rca_struct.rca_data;
    
     nSubjects = size(rcaData,2);
 
@@ -116,16 +111,10 @@ function rca_struct = aggregateData(rca_struct, keep_conditions, error_type, tri
         error('number of frequencies and bins does not match the number of samples');
     else
     end
-
-    %if nBins > 1
-    %    % the average will be computed and added to the bin  
-    %    nBins = nBins + 1;
-    %else
-    %end
     
     % do the noise
     % add comparison data, and compute the amplitudes, which is all you need
-    if isfield(rca_struct,'noiseData')
+    if isfield(rca_struct,'noiseLower')
         ampNoiseBins = zeros(nBins,nFreqs,nCompFromInputData,nConditions);
         if trial_wise
             ampNoiseBinsSubjects = zeros(nBins,nFreqs,nCompFromInputData,nSubjects*nTrials,nConditions);
@@ -135,11 +124,9 @@ function rca_struct = aggregateData(rca_struct, keep_conditions, error_type, tri
         for z = 1:2
             if z == 1
                 % lower
-                noiseStruct.data = rca_struct.noiseData.lowerSideBand;
-                noiseStruct.comparisonData = rca_struct.comparisonNoiseData.lowerSideBand;
+                noiseStruct.rca_data = rca_struct.noiseLower;
             else
-                noiseStruct.data = rca_struct.noiseData.higherSideBand;
-                noiseStruct.comparisonData = rca_struct.comparisonNoiseData.higherSideBand;
+                noiseStruct.rca_data = rca_struct.noiseHigher;
             end
             noiseStruct.settings = rcaSettings;
             noiseStruct.Out = aggregateData(noiseStruct, keep_conditions, 'none', []); % do not compute NR or error
@@ -207,17 +194,10 @@ function rca_struct = aggregateData(rca_struct, keep_conditions, error_type, tri
         for rc = 1:nCompFromInputData
             for f = 1:nFreqs
                 for b = 1:nBins
-                    %if b == nBins && b > 1
-                        % get the vector average over bins
-                        %muRcaDataRealAllSubj(b,f,rc,1:size(tempReal(curIdx,rc,:),3),condNum) = nanmean(muRcaDataRealAllSubj(1:(nBins-1),f,rc,1:size(tempReal(curIdx,rc,:),3),condNum),1);
-                        %muRcaDataImagAllSubj(b,f,rc,1:size(tempImag(curIdx,rc,:),3),condNum) = nanmean(muRcaDataImagAllSubj(1:(nBins-1),f,rc,1:size(tempReal(curIdx,rc,:),3),condNum),1);
-                        %zRcaDataAllSubj(b,f,rc,1:size(tempZ(curIdx,rc,:),3),condNum) = nanmean(zRcaDataAllSubj(1:(nBins-1),f,rc,1:size(tempZ(curIdx,rc,:),3),condNum));
-                    %else
-                        curIdx = find(rcaSettings.freqIndices==dataFreqs(f) & rcaSettings.binIndices==dataBins(b));
-                        muRcaDataRealAllSubj(b,f,rc,1:size(tempReal(curIdx,rc,:),3),condNum) = tempReal(curIdx,rc,:);
-                        muRcaDataImagAllSubj(b,f,rc,1:size(tempImag(curIdx,rc,:),3),condNum) = tempImag(curIdx,rc,:);
-                        zRcaDataAllSubj(b,f,rc,1:size(tempZ(curIdx,rc,:),3),condNum) = tempZ(curIdx,rc,:);
-                    %end
+                    curIdx = find(rcaSettings.freqIndices==dataFreqs(f) & rcaSettings.binIndices==dataBins(b));
+                    muRcaDataRealAllSubj(b,f,rc,1:size(tempReal(curIdx,rc,:),3),condNum) = tempReal(curIdx,rc,:);
+                    muRcaDataImagAllSubj(b,f,rc,1:size(tempImag(curIdx,rc,:),3),condNum) = tempImag(curIdx,rc,:);
+                    zRcaDataAllSubj(b,f,rc,1:size(tempZ(curIdx,rc,:),3),condNum) = tempZ(curIdx,rc,:);
                 end
             end
         end
