@@ -19,7 +19,7 @@ function rcaOut = flipSwapRCA(rcaIn, new_order, flip_comp)
     if nargin < 2 || isempty(new_order)
         new_order = 1:n_comp;
     else
-        if all(ismember(1:n_comp, new_order))
+        if ~all(ismember(1:n_comp, new_order))
             msg = '\n new_order indices have to cover the full range of components \n';
             error(msg);
         else

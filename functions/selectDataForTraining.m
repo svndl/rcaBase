@@ -88,16 +88,23 @@ function [signalDataSel,noise1Sel,noise2Sel,indFSel,indBSel,freqLabelsSel,binLab
                 error('bin indices are not matched across conditions');
             else
             end
-
+            
+            % deal with NaNs in binLabels
+            if any(contains(binLabels{condsToUse(c)}, 'NaN'))
+                nan_idx = contains(binLabels{condsToUse(c)}, 'NaN') == 1;
+                binLabels{condsToUse(c)}(nan_idx) = arrayfun(@(x) sprintf('bin%02d', (x)), 1:sum(nan_idx), 'uni' , false);
+            else
+            end
+            
             % assign indices and labels of selected data features
             % grab bin indices
-            indBSel{c} = indB{condsToUse(c)}(selRowIx);
+            indBSel{c} = indB{condsToUse(c)}(selRowIx)+1; % add one to turn into proper index
             % grab frequency indices
             indFSel{c}  = indF{condsToUse(c)}(selRowIx);
             % grab bin labels
-            binLabelsSel{c}  = binLabels{condsToUse(c)}(binsToUse+1); % add one, because bin level 0 = average
+            binLabelsSel{c}  = binLabels{condsToUse(c)}; 
             % grap frequency labels
-            freqLabelsSel{c}  = freqLabels{condsToUse(c)}(freqsToUse);
+            freqLabelsSel{c}  = freqLabels{condsToUse(c)};
             % grap frequency labels
             trialsSel{c}  = curTrials;
         end

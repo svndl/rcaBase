@@ -1,4 +1,4 @@
-function rca_struct = rcaSweep(path_names, rca_bins, rca_harms, rca_conds, rca_trials, rca_subs, n_reg, n_comp, data_type, compare_ch, force_reload)
+function rca_struct = rcaSweep(path_names, rca_bins, rca_harms, rca_conds, rca_trials, rca_subs, n_reg, n_comp, data_type, compare_ch, force_reload, return_all)
 % perform RCA on sweep SSVEP data exported to RLS or DFT format
 %
 % rca_struct = rcaSweep(path_names, [rca_bins, rca_harms, rca_conds, rca_trials, rca_subs, n_reg, n_comp, data_type, compare_ch, force_reload])
@@ -28,6 +28,8 @@ function rca_struct = rcaSweep(path_names, rca_bins, rca_harms, rca_conds, rca_t
 %                   new .mat files for quick loading of the data
 %                   set to true if you have re-exported the data
 %
+%   return_all: [true]/false, if true return all of the data in the dataset,
+%                   if false, return only data used to train rca
 % OUTPUTS: 
 %   rca_struct: length(rca_harms) x 1 array of structs, one for each harmonic, 
 %   with the following subfields:
@@ -35,7 +37,7 @@ function rca_struct = rcaSweep(path_names, rca_bins, rca_harms, rca_conds, rca_t
 %           (n_bins+1)*2 x n_comp+1 x trials matrix
 %           containing the real and imaginary components of each RC.
 %           The comparison data is added at the n_comp+1 position in the matrix
-%           (note: this is all the data in the dataset, not just the data used for RCA)
+%           (note: by default this is all the data in the dataset, not just the data used for RCA)
 %
 %   - noiseLower and noiseHigher:
 %           two fields containing matrices same shape as data, 
@@ -43,7 +45,7 @@ function rca_struct = rcaSweep(path_names, rca_bins, rca_harms, rca_conds, rca_t
 %           passed through the components and comparison channel
 %
 %   - input_data: the input data 
-%           (note: this is all the data in the dataset, not just the data used for RCA)
+%           (note: by default this is all the data in the dataset, not just the data used for RCA)
 %
 %   - W: linear transformation matrix to go from sensor space to RC-space
 %
@@ -57,6 +59,7 @@ function rca_struct = rcaSweep(path_names, rca_bins, rca_harms, rca_conds, rca_t
 % created by JP Dmochowski and H Gerhard
 % updated and maintained by PJ Kohler [pjkohl3r@gmail.com]
 
+if nargin<12 || isempty(return_all); return_all = true; end
 if nargin<11 || isempty(force_reload); force_reload = false; end
 if nargin<10 || isempty(compare_ch); compare_ch = 75; end
 if nargin<9 || isempty(data_type), data_type = 'RLS'; end
@@ -98,12 +101,14 @@ while (s <= nSubjects)
     if isempty(dir(sourceDataFileName)) || force_reload
         createSourceDataMat(path_names{s});
     end
-    [signalData,noise1,noise2,subFreqIdx{s},subBinIdx{s},subFreqLabels{s},subBinLabels{s}] = selectDataForTraining(sourceDataFileName);
-    all_data(:,s)=signalData;
-    cellNoiseData1(:,s)=noise1;
-    cellNoiseData2(:,s)=noise2;
-    train_data(:,s) = selectDataForTraining(sourceDataFileName,rca_bins,rca_harms,rca_conds,rca_trials);
-    
+    if return_all
+        [all_data(:,s), cellNoiseData1(:,s), cellNoiseData2(:,s), subFreqIdx{s}, subBinIdx{s}, subFreqLabels{s}, subBinLabels{s}] = selectDataForTraining(sourceDataFileName);
+        train_data(:,s) = selectDataForTraining(sourceDataFileName, rca_bins,rca_harms,rca_conds,rca_trials);
+    else
+        [all_data(:,s), cellNoiseData1(:,s), cellNoiseData2(:,s), subFreqIdx{s}, subBinIdx{s}, subFreqLabels{s}, subBinLabels{s}] = selectDataForTraining(sourceDataFileName, rca_bins, rca_harms, rca_conds, rca_trials);
+        train_data(:,s) = all_data(:,s);
+    end
+
     for c = 1:length(rca_conds)
         if ~any(isnan(subFreqIdx{s}{c}))
             if assigned(c)
@@ -154,33 +159,35 @@ if compare_ch > nChannels
 else
 end
 
-%% DEAL WITH BINS
-if any(contains(binLabels, 'NaN'))
-    nan_idx = contains(binLabels, 'NaN') == 1;
-    binLabels(nan_idx) = arrayfun(@(x) sprintf('bin%02d', (x)), 1:sum(nan_idx), 'uni' , false);
-else
-end
-
-if any(binIndices == 0)
-    binIndices = binIndices + 1; % turn into actual indices
+%% REORDER WITH BINS
+if (length(unique(binIndices))) > 1 && (any(binIndices == 1)) 
+    % only reorder data if more than one thing in the stack                                                         
+    % and average is in the stack  
     % move averages to the end of the stack
     for b = 1:length(binIndices)
-        if binIndices(b) == 11
-            new_idx(b) = b - 10;
+        if binIndices(b) == max(binIndices)
+            new_idx(b) = b - (length(unique(binIndices))-1);
         else
             new_idx(b) = b + 1;
         end
     end
     new_idx = [new_idx, new_idx+length(new_idx)];
-    all_data = cellfun(@(x) x(new_idx, :, :), all_data, 'uni', false);
-    % note: not necessary to reorder train_data, as this 
-    % does not influence the output
-    binLabels = binLabels(new_idx(1:length(binLabels)));
-    % make sure rca bins = 0 refer to the now 11th index ("ave")
-    rca_bins(rca_bins == 0) = 11;
-    clear new_idx;
+    all_data = cellfun(@(x) x(new_idx, :, :), all_data, 'uni', false);  
+    % note: not necessary to reorder train_data, as order of components 
+    % should not influence the output
 else
 end
+
+% always reorder bin indices, labels and rca_bins
+binIndices = binIndices(new_idx(1:length(binIndices)));
+newIndices(binIndices == 1) = length(binLabels); % binLabels has the full set of bins
+newIndices(binIndices > 1) = binIndices(binIndices > 1) - 1;
+binIndices = reshape(newIndices, [], 1); 
+binLabels = [binLabels(2:end); binLabels(1)];
+% make sure rca bins = 0 refer to the now last index ("ave")
+rca_bins(rca_bins == 0) = length(binLabels);
+clear new_idx;
+
 
 %% DEAL WITH EMPTY RCA INPUTS
 if isempty(rca_conds)
@@ -209,6 +216,11 @@ if ~isempty(rca_subs)
     else
     end
     train_data = train_data(:,rca_subs);
+    if ~return_all
+        % if not returning all, also restrict all data
+        all_data = all_data(:, rca_subs);
+    else
+    end
 else
     rca_subs = 'all';
 end
