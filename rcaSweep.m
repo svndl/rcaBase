@@ -175,11 +175,11 @@ if (length(unique(binIndices))) > 1 && (any(binIndices == 1))
     all_data = cellfun(@(x) x(new_idx, :, :), all_data, 'uni', false);  
     % note: not necessary to reorder train_data, as order of components 
     % should not influence the output
+    binIndices = binIndices(new_idx(1:length(binIndices)));
 else
 end
 
 % always reorder bin indices, labels and rca_bins
-binIndices = binIndices(new_idx(1:length(binIndices)));
 newIndices(binIndices == 1) = length(binLabels); % binLabels has the full set of bins
 newIndices(binIndices > 1) = binIndices(binIndices > 1) - 1;
 binIndices = reshape(newIndices, [], 1); 
