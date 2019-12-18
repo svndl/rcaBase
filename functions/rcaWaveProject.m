@@ -78,7 +78,13 @@ function axxStrct = rcaWaveProject(path_names, W, conds_to_use, type)
        end
        clear sensorWave;
     end
-    axxStrct.rcaWave = rcaProject(axxStrct.sensorWave, W);
+    
+    axxStrct.rcaWave = cell(size(axxStrct.sensorWave));
+    
+    for z = 1:size(W, 2)
+        axxStrct.rcaWave = cellfun(@(x, y) cat(2, x, y), ... 
+            axxStrct.rcaWave, rcaProject(axxStrct.sensorWave, W(:,z)), 'uni', false);
+    end
 end
 
 
