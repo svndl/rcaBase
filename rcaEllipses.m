@@ -380,10 +380,13 @@ function e_data = rcaEllipses(rc_struct, cond_idx, sub_idx, rc_num, F1, delay_ms
                 hold off
             end
             drawnow;
+            out_path = split(pwd, filesep);
+            out_path = cell2mat(join([out_path(1:3); {'Desktop'}], filesep));
+            
             if rc_num(r) == n_comp
-                export_fig(ellipse_fig,'~/Desktop/ellipseplot_comp.pdf','-transparent','-painters');
+                export_fig(ellipse_fig, sprintf('%s%sellipseplot_comp.pdf', out_path, filesep) ,'-transparent','-painters');
             else
-                export_fig(ellipse_fig,sprintf('~/Desktop/ellipseplot_rc%d.pdf',rc_num(r)),'-transparent','-painters');
+                export_fig(ellipse_fig, sprintf('%s%sellipseplot_rc%d.pdf', out_path, filesep, rc_num(r)),'-transparent','-painters');
             end
         end
     else
