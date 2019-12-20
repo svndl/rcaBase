@@ -208,6 +208,10 @@ else
 end
 
 % make new array that only has training subjects
+if islogical(rca_subs)
+    rca_subs = find(rca_subs);
+else
+end
 
 if ~isempty(rca_subs)
     if any(~ismember(rca_subs, 1:size(train_data, 2)))
