@@ -1,4 +1,4 @@
-function e_data = rcaEllipses(rc_struct, cond_idx, sub_idx, rc_num, F1, delay_ms, plot_data, plot_offset, cond_labels, cond_colors, gca_opts, error_type)
+function e_data = rcaEllipses(rc_struct, cond_idx, sub_idx, rc_num, F1, delay_ms, plot_data, plot_offset, cond_labels, cond_colors, error_type, gca_opts)
     
     if nargin < 12 || isempty(error_type)
         error_type = 'SEM';
@@ -7,8 +7,12 @@ function e_data = rcaEllipses(rc_struct, cond_idx, sub_idx, rc_num, F1, delay_ms
     
     if nargin < 11 || isempty(gca_opts)
         l_width = 1.5;
-        gca_opts = {'tickdir','out','box','off','fontsize',12,'fontname','Helvetica','linewidth',l_width,'Color','none'};
+        f_size = 12;
+        text_opts = {'fontweight','normal','fontname','Helvetica','fontsize', f_size};
+        gca_opts = [{'tickdir','out','box','off','fontsize',12,'fontname','Helvetica','linewidth',l_width,'Color','none'}, text_opts{:}];;
     else
+        f_size = 12;
+        text_opts = {'fontweight','normal','fontname','Helvetica','fontsize', f_size};
     end
     
     if nargin < 10 || isempty(cond_colors)
@@ -297,7 +301,7 @@ function e_data = rcaEllipses(rc_struct, cond_idx, sub_idx, rc_num, F1, delay_ms
                     cycle_h = plot(cycle_x,cycle_y,'-','color',[200,200,200]./255,'linewidth',l_width);
                     uistack(cycle_h,'top');
                     set(gca,gca_opts{:},'ticklength',[0.1,0.1],'clipping','off','visible','on','xtick',-e_max:e_units:e_max,'ytick',-e_max:e_units:e_max);
-                    text(e_max*1.2,-e_max*1.2,num2str(cycle_len,'cycle length: %.01f ms'));
+                    text(e_max*1.2,-e_max*1.2,num2str(cycle_len,'cycle length: %.01f ms'), text_opts{:});
                     xlabel('real','fontsize',12,'fontname','Helvetica');
                     ylabel('imag','fontsize',12,'fontname','Helvetica');
                 else
@@ -380,6 +384,7 @@ function e_data = rcaEllipses(rc_struct, cond_idx, sub_idx, rc_num, F1, delay_ms
                 hold off
             end
             drawnow;
+            tightfig;
             out_path = split(pwd, filesep);
             out_path = cell2mat(join([out_path(1:3); {'Desktop'}], filesep));
             
