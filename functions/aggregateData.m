@@ -70,6 +70,8 @@ function rca_struct = aggregateData(rca_struct, keep_conditions, error_type, tri
     %       naka_rushton: struct of naka-rushton outputs, pretty
     %              self-explanatory
     
+    % mk: changed mean phase calculation from atan to atan2 (05/18/2020)
+    
     if nargin<2
         keep_conditions=true; 
     end
@@ -87,7 +89,12 @@ function rca_struct = aggregateData(rca_struct, keep_conditions, error_type, tri
     end
     
     rcaSettings = rca_struct.settings;
-    rcaData = rca_struct.rca_data;
+    % add comparison data as last component
+    if isfield(rca_struct,'comparisonData')
+        rcaData = cellfun(@(x,y) cat(2,x,y), rca_struct.data,rca_struct.comparisonData,'uni',false);
+    else
+        rcaData = rca_struct.data;
+    end
    
     nSubjects = size(rcaData,2);
 
@@ -111,10 +118,16 @@ function rca_struct = aggregateData(rca_struct, keep_conditions, error_type, tri
         error('number of frequencies and bins does not match the number of samples');
     else
     end
+
+    if nBins > 1
+        % the average will be computed and added to the bin  
+        nBins = nBins + 1;
+    else
+    end
     
     % do the noise
     % add comparison data, and compute the amplitudes, which is all you need
-    if isfield(rca_struct,'noiseLower')
+    if isfield(rca_struct,'noiseData')
         ampNoiseBins = zeros(nBins,nFreqs,nCompFromInputData,nConditions);
         if trial_wise
             ampNoiseBinsSubjects = zeros(nBins,nFreqs,nCompFromInputData,nSubjects*nTrials,nConditions);
@@ -124,9 +137,11 @@ function rca_struct = aggregateData(rca_struct, keep_conditions, error_type, tri
         for z = 1:2
             if z == 1
                 % lower
-                noiseStruct.rca_data = rca_struct.noiseLower;
+                noiseStruct.data = rca_struct.noiseData.lowerSideBand;
+                noiseStruct.comparisonData = rca_struct.comparisonNoiseData.lowerSideBand;
             else
-                noiseStruct.rca_data = rca_struct.noiseHigher;
+                noiseStruct.data = rca_struct.noiseData.higherSideBand;
+                noiseStruct.comparisonData = rca_struct.comparisonNoiseData.higherSideBand;
             end
             noiseStruct.settings = rcaSettings;
             noiseStruct.Out = aggregateData(noiseStruct, keep_conditions, 'none', []); % do not compute NR or error
@@ -194,10 +209,17 @@ function rca_struct = aggregateData(rca_struct, keep_conditions, error_type, tri
         for rc = 1:nCompFromInputData
             for f = 1:nFreqs
                 for b = 1:nBins
-                    curIdx = find(rcaSettings.freqIndices==dataFreqs(f) & rcaSettings.binIndices==dataBins(b));
-                    muRcaDataRealAllSubj(b,f,rc,1:size(tempReal(curIdx,rc,:),3),condNum) = tempReal(curIdx,rc,:);
-                    muRcaDataImagAllSubj(b,f,rc,1:size(tempImag(curIdx,rc,:),3),condNum) = tempImag(curIdx,rc,:);
-                    zRcaDataAllSubj(b,f,rc,1:size(tempZ(curIdx,rc,:),3),condNum) = tempZ(curIdx,rc,:);
+                    if b == nBins && b > 1
+                        % get the vector average over bins
+                        muRcaDataRealAllSubj(b,f,rc,1:size(tempReal(curIdx,rc,:),3),condNum) = nanmean(muRcaDataRealAllSubj(1:(nBins-1),f,rc,1:size(tempReal(curIdx,rc,:),3),condNum),1);
+                        muRcaDataImagAllSubj(b,f,rc,1:size(tempImag(curIdx,rc,:),3),condNum) = nanmean(muRcaDataImagAllSubj(1:(nBins-1),f,rc,1:size(tempReal(curIdx,rc,:),3),condNum),1);
+                        zRcaDataAllSubj(b,f,rc,1:size(tempZ(curIdx,rc,:),3),condNum) = nanmean(zRcaDataAllSubj(1:(nBins-1),f,rc,1:size(tempZ(curIdx,rc,:),3),condNum));
+                    else
+                        curIdx = find(rcaSettings.freqIndices==dataFreqs(f) & rcaSettings.binIndices==dataBins(b));
+                        muRcaDataRealAllSubj(b,f,rc,1:size(tempReal(curIdx,rc,:),3),condNum) = tempReal(curIdx,rc,:);
+                        muRcaDataImagAllSubj(b,f,rc,1:size(tempImag(curIdx,rc,:),3),condNum) = tempImag(curIdx,rc,:);
+                        zRcaDataAllSubj(b,f,rc,1:size(tempZ(curIdx,rc,:),3),condNum) = tempZ(curIdx,rc,:);
+                    end
                 end
             end
         end
@@ -272,15 +294,20 @@ function rca_struct = aggregateData(rca_struct, keep_conditions, error_type, tri
     end
     
     % 
+    mean_data.real_signal = muRcaDataReal;
+    mean_data.imag_signal = muRcaDataImag;
     mean_data.amp_signal = sqrt(muRcaDataReal.^2+muRcaDataImag.^2);
-    mean_data.phase_signal = atan(muRcaDataImag./muRcaDataReal);
+
+    % NEW: calculate phase with atan2 (four-quadrant inverse tangent)
+    % instead of atan (gives phase between + - pi/2 only)
+    % Old way: mean_data.phase_signal = atan(muRcaDataImag./muRcaDataReal);
+    mean_data.phase_signal = atan2(muRcaDataImag,muRcaDataReal);
+    
     mean_data.amp_noise = ampNoiseBins;
     mean_data.z_snr = zRcaData;
     rca_struct.mean = mean_data;
  
     sub_data.amp_signal = sqrt(muRcaDataRealAllSubj.^2+muRcaDataImagAllSubj.^2);
-    sub_data.real_signal = muRcaDataRealAllSubj;
-    sub_data.imag_signal = muRcaDataImagAllSubj;
     sub_data.amp_noise = ampNoiseBinsSubjects;
     sub_data.proj_amp_signal = projectAmpAllSubj;
     sub_data.z_snr = zRcaDataAllSubj;
