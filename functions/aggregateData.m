@@ -91,9 +91,9 @@ function rca_struct = aggregateData(rca_struct, keep_conditions, error_type, tri
     rcaSettings = rca_struct.settings;
     % add comparison data as last component
     if isfield(rca_struct,'comparisonData')
-        rcaData = cellfun(@(x,y) cat(2,x,y), rca_struct.data,rca_struct.comparisonData,'uni',false);
+        rcaData = cellfun(@(x,y) cat(2,x,y), rca_struct.rca_data,rca_struct.comparisonData,'uni',false);
     else
-        rcaData = rca_struct.data;
+        rcaData = rca_struct.rca_data;
     end
    
     nSubjects = size(rcaData,2);
