@@ -32,7 +32,7 @@ function axxStrct = rcaWaveProject(path_names, W, conds_to_use, type)
         end
     end
     
-    if any(ischar(path_names{1}))
+    if any(isstring(path_names{1}))
         path_empty = cell2mat(cellfun(@(x) isempty(exist(x, 'dir')), path_names, 'uni', false));
         if any(path_empty)
             msg = sprintf('\n path %s does not exist', path_names(path_empty));
@@ -41,7 +41,7 @@ function axxStrct = rcaWaveProject(path_names, W, conds_to_use, type)
         end
         sensorWave = [];
     else
-        fprint('\n non-string input given, assuming this is sensor data');
+        fprintf('\n non-string input given, assuming this is sensor data');
         input_size = size(path_names);
         if numel(input_size) ~= 2
             msg = sprintf('\n sensor input must be two-dimensional \n');
