@@ -89,6 +89,15 @@ function rca_struct = aggregateData(rca_struct, keep_conditions, error_type, tri
     end
     
     rcaSettings = rca_struct.settings;
+    
+    % take care of case where subfield is named 
+    %'.data' rather than '.rca_data'
+    if isfield(rca_struct,'comparisonData')
+        rca_struct.rca_data = rca_struct.data;
+        rca_struct = rmfield(rca_struct,'data')
+    else
+    end
+    
     % add comparison data as last component
     if isfield(rca_struct,'comparisonData')
         rcaData = cellfun(@(x,y) cat(2,x,y), rca_struct.rca_data,rca_struct.comparisonData,'uni',false);
@@ -127,7 +136,7 @@ function rca_struct = aggregateData(rca_struct, keep_conditions, error_type, tri
     
     % do the noise
     % add comparison data, and compute the amplitudes, which is all you need
-    if isfield(rca_struct,'noiseData')
+    if isfield(rca_struct,'noiseLower') && isfield(rca_struct,'noiseHigher')
         ampNoiseBins = zeros(nBins,nFreqs,nCompFromInputData,nConditions);
         if trial_wise
             ampNoiseBinsSubjects = zeros(nBins,nFreqs,nCompFromInputData,nSubjects*nTrials,nConditions);
@@ -137,11 +146,9 @@ function rca_struct = aggregateData(rca_struct, keep_conditions, error_type, tri
         for z = 1:2
             if z == 1
                 % lower
-                noiseStruct.data = rca_struct.noiseData.lowerSideBand;
-                noiseStruct.comparisonData = rca_struct.comparisonNoiseData.lowerSideBand;
+                noiseStruct.rca_data = rca_struct.noiseLower;
             else
-                noiseStruct.data = rca_struct.noiseData.higherSideBand;
-                noiseStruct.comparisonData = rca_struct.comparisonNoiseData.higherSideBand;
+                noiseStruct.rca_data = rca_struct.noiseHigher;
             end
             noiseStruct.settings = rcaSettings;
             noiseStruct.Out = aggregateData(noiseStruct, keep_conditions, 'none', []); % do not compute NR or error
@@ -189,12 +196,18 @@ function rca_struct = aggregateData(rca_struct, keep_conditions, error_type, tri
         tempZ = [];
         for s=1:nSubjects
             if trial_wise
-                nanSet = nan(nBins,nFreqs,nCompFromInputData,nSubjects*nTrials);
+                if s == 1
+                    nanSet = nan(nBins,nFreqs,nCompFromInputData,nSubjects*nTrials);
+                else
+                end
                 % grab all subjects' data, without averaging over trials: 
                 tempReal = cat(3,tempReal,rcaDataReal{condNum,s});
                 tempImag = cat(3,tempImag,rcaDataImag{condNum,s});
             else
-                nanSet = nan(nBins,nFreqs,nCompFromInputData,nSubjects);
+                if s == 1
+                    nanSet = nan(nBins,nFreqs,nCompFromInputData,nSubjects);
+                else
+                end
                 % grab all subjects' data, averaging over trials: 
                 tempReal = cat(3,tempReal,nanmean(rcaDataReal{condNum,s},3));
                 tempImag = cat(3,tempImag,nanmean(rcaDataImag{condNum,s},3));
@@ -293,10 +306,14 @@ function rca_struct = aggregateData(rca_struct, keep_conditions, error_type, tri
     else
     end
     
-    % 
+    % do averaging check
+    project_mean = permute(mean(projectAmpAllSubj,4),[1,2,3,5,4]);
+    real_imag_mean = sqrt(muRcaDataReal.^2+muRcaDataImag.^2);
+    assert(all(real_imag_mean(:) - project_mean(:) < 10^-14))
+    
     mean_data.real_signal = muRcaDataReal;
     mean_data.imag_signal = muRcaDataImag;
-    mean_data.amp_signal = sqrt(muRcaDataReal.^2+muRcaDataImag.^2);
+    mean_data.amp_signal = real_imag_mean;
 
     % NEW: calculate phase with atan2 (four-quadrant inverse tangent)
     % instead of atan (gives phase between + - pi/2 only)
@@ -358,7 +375,7 @@ function outZ = computeZsnr(realVals,imagVals)
         xyData = [realVals(:,z),imagVals(:,z)];
         nanVals = sum(isnan(xyData),2)>0;
         % use standard deviation, to compute the zSNR
-        if size( xyData(~nanVals,:) ) > 2
+        if size( xyData(~nanVals,:) , 1 ) > 2
             [ampErr,~,zSNR] = fitErrorEllipse(xyData(~nanVals,:),'1STD',false);
         else
             zSNR = NaN;
