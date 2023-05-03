@@ -32,7 +32,7 @@ function axxStrct = rcaWaveProject(path_names, W, conds_to_use, type)
         end
     end
     
-    if any(isstring(path_names{1}))
+    if any(isstring(path_names{1})) || any(ischar(path_names{1}))
         path_empty = cell2mat(cellfun(@(x) isempty(exist(x, 'dir')), path_names, 'uni', false));
         if any(path_empty)
             msg = sprintf('\n path %s does not exist', path_names(path_empty));
