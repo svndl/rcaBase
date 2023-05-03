@@ -9,16 +9,16 @@ function [ rcaRelExpl, rcaVarExpl, pcaVarExpl, pcaEigs ] = rcaExplained(rcStruct
     end
     
     % compute PCA variance explained
-    [~,pcaEigs] = eig(rcStruct.covData.Rxx + rcStruct.covData.Ryy);
+    [~,pcaEigs] = eig(rcStruct.COV.Rxx + rcStruct.COV.Ryy);
     pcaEigs=sort(diag(pcaEigs),'descend');
     pcaVarExpl = sum(pcaEigs(1:nInclude))/sum(pcaEigs);
         
     % and reliability explained
-    rcaEigs = sort(rcStruct.covData.sortedGeneralizedEigenValues,'descend');
+    rcaEigs = sort(rcStruct.COV.sortedGeneralizedEigenValues,'descend');
     rcaRelExpl = sum(rcaEigs(1:nInclude))/sum(rcaEigs);
 
     % compute RCA variance explained
-    Rtotal = 0.5*(rcStruct.covData.Rxx + rcStruct.covData.Ryy); % pooled covariance 128 x 128
+    Rtotal = 0.5*(rcStruct.COV.Rxx + rcStruct.COV.Ryy); % pooled covariance 128 x 128
     sigmas = diag (rcStruct.W'*Rtotal*rcStruct.W)  ./ diag( rcStruct.W'*rcStruct.W) ; % this should yield C x 1 matrix, where C is nComp 
     rcaVarExpl = sum(sigmas(1:nInclude))/sum(sigmas);
     if plotFig
